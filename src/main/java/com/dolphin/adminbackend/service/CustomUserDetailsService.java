@@ -1,7 +1,8 @@
-package com.dolphin.adminbackend.services;
+package com.dolphin.adminbackend.service;
 
-import com.dolphin.adminbackend.models.User;
-import com.dolphin.adminbackend.repositories.UserRepository;
+import com.dolphin.adminbackend.model.User;
+import com.dolphin.adminbackend.repository.UserRepo;
+
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -13,9 +14,9 @@ import java.util.List;
 @Service
 public class CustomUserDetailsService implements UserDetailsService {
 
-    private final UserRepository userRepository;
+    private final UserRepo userRepository;
 
-    public CustomUserDetailsService(UserRepository userRepository) {
+    public CustomUserDetailsService(UserRepo userRepository) {
         this.userRepository = userRepository;
     }
 

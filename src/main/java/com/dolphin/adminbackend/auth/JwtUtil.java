@@ -7,7 +7,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.stereotype.Component;
 
-import com.dolphin.adminbackend.models.User;
+import com.dolphin.adminbackend.model.User;
 
 import java.util.Date;
 import java.util.List;
@@ -31,8 +31,7 @@ public class JwtUtil {
 
     public String createToken(User user) {
         Claims claims = Jwts.claims().setSubject(user.getEmail());
-        claims.put("firstName",user.getFirstName());
-        claims.put("lastName",user.getLastName());
+        claims.put("fullName",user.getFullName());
         Date tokenCreateTime = new Date();
         Date tokenValidity = new Date(tokenCreateTime.getTime() + accessTokenValidity);
         return Jwts.builder()

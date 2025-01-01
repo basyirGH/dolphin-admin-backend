@@ -1,4 +1,4 @@
-package com.dolphin.adminbackend.models.response;
+package com.dolphin.adminbackend.model.response;
 
 public class LoginRes {
     

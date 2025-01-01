@@ -1,4 +1,4 @@
-package com.dolphin.adminbackend.models.request;
+package com.dolphin.adminbackend.model.request;
 
 public class LoginReq {
     

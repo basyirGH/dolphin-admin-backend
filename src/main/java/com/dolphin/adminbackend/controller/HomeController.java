@@ -1,4 +1,4 @@
-package com.dolphin.adminbackend.controllers;
+package com.dolphin.adminbackend.controller;
 
 import java.util.HashMap;
 

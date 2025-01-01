@@ -1,6 +1,5 @@
 package com.dolphin.adminbackend.auth;
 
-import com.dolphin.adminbackend.services.CustomUserDetailsService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -14,6 +13,8 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
+import com.dolphin.adminbackend.service.CustomUserDetailsService;
 
 @Configuration
 @EnableWebSecurity

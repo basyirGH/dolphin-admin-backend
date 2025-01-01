@@ -1,4 +1,4 @@
-package com.dolphin.adminbackend.constants;
+package com.dolphin.adminbackend.constant;
 
 public enum CustomAPICode {
 

@@ -1,10 +1,10 @@
-package com.dolphin.adminbackend.controllers;
+package com.dolphin.adminbackend.controller;
 
 import com.dolphin.adminbackend.auth.JwtUtil;
-import com.dolphin.adminbackend.models.User;
-import com.dolphin.adminbackend.models.request.LoginReq;
-import com.dolphin.adminbackend.models.response.ErrorRes;
-import com.dolphin.adminbackend.models.response.LoginRes;
+import com.dolphin.adminbackend.model.User;
+import com.dolphin.adminbackend.model.request.LoginReq;
+import com.dolphin.adminbackend.model.response.ErrorRes;
+import com.dolphin.adminbackend.model.response.LoginRes;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

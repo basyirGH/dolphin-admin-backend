@@ -1,4 +1,4 @@
-package com.dolphin.adminbackend.models.response;
+package com.dolphin.adminbackend.model.response;
 
 import org.springframework.http.HttpStatus;
 
