@@ -1,28 +1,32 @@
 package com.dolphin.adminbackend.service;
 
-import com.dolphin.adminbackend.constant.OrderStatus;
-import com.dolphin.adminbackend.model.Customer;
-import com.dolphin.adminbackend.model.Order;
-import com.dolphin.adminbackend.model.OrderItem;
-import com.dolphin.adminbackend.model.Payment;
-import com.dolphin.adminbackend.model.Product;
-import com.dolphin.adminbackend.model.request.OrderReq;
-import com.dolphin.adminbackend.repository.CustomerRepo;
-import com.dolphin.adminbackend.repository.OrderRepo;
-import com.dolphin.adminbackend.repository.PaymentRepo;
-import com.dolphin.adminbackend.repository.ProductRepo;
-
-import jakarta.persistence.EntityNotFoundException;
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-
-import java.time.LocalDateTime;
+import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import com.dolphin.adminbackend.constant.OrderStatus;
+import com.dolphin.adminbackend.model.dto.request.OrderReq;
+import com.dolphin.adminbackend.model.jpa.Customer;
+import com.dolphin.adminbackend.model.jpa.Order;
+import com.dolphin.adminbackend.model.jpa.OrderItem;
+import com.dolphin.adminbackend.model.jpa.Payment;
+import com.dolphin.adminbackend.model.jpa.Product;
+import com.dolphin.adminbackend.repository.CustomerRepo;
+import com.dolphin.adminbackend.repository.OrderRepo;
+import com.dolphin.adminbackend.repository.PaymentRepo;
+import com.dolphin.adminbackend.repository.ProductRepo;
+import com.dolphin.adminbackend.socketio.WebSocketController;
+import com.fasterxml.jackson.core.JsonProcessingException;
+
+import jakarta.persistence.EntityNotFoundException;
+import lombok.extern.slf4j.Slf4j;
+
 @Service
+@Slf4j
 public class OrderService {
 
     @Autowired
@@ -37,11 +41,18 @@ public class OrderService {
     @Autowired
     private ProductRepo prodRepo;
 
+    @Autowired
+    private WebSocketController webSocketController;
+
+    // @Autowired
+    // private OrderEventPublisher orderEventPublisher;
+
     /**
      * Create a new order.
      *
      * @param order the order to create
      * @return the created order
+     * @throws JsonProcessingException
      */
     public Order createOrder(OrderReq orderRequest) {
 
@@ -59,9 +70,10 @@ public class OrderService {
                     Product product = null;
                     Optional<Product> optProduct = prodRepo.findById(itemRequest.getProductId());
                     if (optProduct.isPresent()) {
-                        product = optProduct.get();
-                        // at this point, product is not initialized yet (lazy loading), so it will
+                        // At this point, product is not initialized yet (lazy loading), so it will
                         // appear as an empty object
+                        product = optProduct.get();
+
                     } else {
                         throw new EntityNotFoundException("productId " + itemRequest.getProductId() + " not found");
                     }
@@ -72,8 +84,7 @@ public class OrderService {
                             product.getPrice(), // product is initialized by accessing any property of it
                             null // Order will be set later
                     );
-                })
-                .collect(Collectors.toList());
+                }).collect(Collectors.toList());
 
         Double totalAmount = orderItems.stream()
                 .mapToDouble(item -> item.getPricePerUnit() * item.getQuantity())
@@ -84,12 +95,16 @@ public class OrderService {
         order.setItems(orderItems);
         order.setTotalAmount(totalAmount);
         order.setStatus(OrderStatus.PENDING);
-        order.setOrderDate(LocalDateTime.now());
+        order.setOrderDate(new Date());
 
         // Set the order reference for all items
         orderItems.forEach(item -> item.setOrder(order));
 
-        return orderRepo.save(order);
+        Order savedOrder = orderRepo.save(order);
+        //orderEventPublisher.publishOrderCreatedEvent("new order created");
+        webSocketController.handleNewOrder(orderRepo.count());
+        log.info("Saved order ID: {}", savedOrder.getId());
+        return savedOrder;
     }
 
     /**
