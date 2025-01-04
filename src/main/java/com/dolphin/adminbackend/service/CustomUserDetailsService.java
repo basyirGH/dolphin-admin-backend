@@ -1,6 +1,6 @@
 package com.dolphin.adminbackend.service;
 
-import com.dolphin.adminbackend.model.User;
+import com.dolphin.adminbackend.model.jpa.User;
 import com.dolphin.adminbackend.repository.UserRepo;
 
 import org.springframework.security.core.userdetails.UserDetails;

@@ -1,4 +1,4 @@
-package com.dolphin.adminbackend.model.request;
+package com.dolphin.adminbackend.model.dto.request;
 
 import java.util.List;
 

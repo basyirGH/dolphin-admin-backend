@@ -1,4 +1,4 @@
-package com.dolphin.adminbackend.model;
+package com.dolphin.adminbackend.model.jpa;
 
 import jakarta.persistence.*; 
 import java.util.List;

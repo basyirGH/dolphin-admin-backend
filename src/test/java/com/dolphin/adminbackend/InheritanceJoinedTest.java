@@ -6,11 +6,11 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import com.dolphin.adminbackend.model.User;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.test.context.ActiveProfiles;
 
-import com.dolphin.adminbackend.model.Customer;
+import com.dolphin.adminbackend.model.jpa.Customer;
+import com.dolphin.adminbackend.model.jpa.User;
 
 import jakarta.persistence.EntityManager;
 

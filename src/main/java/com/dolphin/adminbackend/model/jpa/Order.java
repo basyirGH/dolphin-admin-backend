@@ -1,27 +1,32 @@
-package com.dolphin.adminbackend.model;
+package com.dolphin.adminbackend.model.jpa;
 
-import jakarta.persistence.*; 
-import java.time.LocalDateTime; 
+import jakarta.persistence.*;
+import java.util.Date;
 import java.util.List;
 
 import com.dolphin.adminbackend.constant.OrderStatus;
+import com.dolphin.adminbackend.eventlistener.OrderEventListener;
 import com.fasterxml.jackson.annotation.JsonBackReference;
-import com.fasterxml.jackson.annotation.JsonManagedReference; 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 
 @Entity
 @Table(name = "order_")
+@EntityListeners(OrderEventListener.class)
 public class Order {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JsonBackReference // Marks the parent side, prevents circular serialization (nested object/array in api response)
+    @JsonBackReference // Marks the parent side, prevents circular serialization (nested object/array
+                       // in api response)
     private Customer customer;
 
-    // Composition: OrderItem cannot exist without an Order. If an Order is deleted, all associated OrderItems should also be deleted.
+    // Composition: OrderItem cannot exist without an Order. If an Order is deleted,
+    // all associated OrderItems should also be deleted.
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
-    @JsonManagedReference // Marks the child side, prevents circular serialization (nested object/array in api response)
+    @JsonManagedReference // Marks the child side, prevents circular serialization (nested object/array in
+                          // api response)
     private List<OrderItem> items;
 
     @Column(nullable = false)
@@ -31,7 +36,7 @@ public class Order {
     private OrderStatus status;
 
     @Column(nullable = false)
-    private LocalDateTime orderDate;
+    private Date orderDate; //LocalDateTime is problematic with Jackson
 
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL)
     private List<Payment> payments;
@@ -69,11 +74,11 @@ public class Order {
         this.status = status;
     }
 
-    public LocalDateTime getOrderDate() {
+    public Date getOrderDate() {
         return orderDate;
     }
 
-    public void setOrderDate(LocalDateTime orderDate) {
+    public void setOrderDate(Date orderDate) {
         this.orderDate = orderDate;
     }
 

@@ -1,10 +1,9 @@
-package com.dolphin.adminbackend.model.request;
+package com.dolphin.adminbackend.model.dto.request;
 
 public class OrderItemReq {
 
     private Long productId;
     private Integer quantity;
-    private Double pricePerUnit;
 
     // Getters and setters
     public Long getProductId() {
@@ -21,14 +20,6 @@ public class OrderItemReq {
 
     public void setQuantity(Integer quantity) {
         this.quantity = quantity;
-    }
-
-    public Double getPricePerUnit() {
-        return pricePerUnit;
-    }
-
-    public void setPricePerUnit(Double price) {
-        this.pricePerUnit = price;
     }
 }
 

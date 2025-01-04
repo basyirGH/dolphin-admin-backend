@@ -2,7 +2,7 @@ package com.dolphin.adminbackend.repository;
 
 import org.springframework.stereotype.Repository;
 
-import com.dolphin.adminbackend.model.User;
+import com.dolphin.adminbackend.model.jpa.User;
 
 @Repository
 public class UserRepo {

@@ -1,4 +1,4 @@
-package com.dolphin.adminbackend.model;
+package com.dolphin.adminbackend.model.jpa;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
 

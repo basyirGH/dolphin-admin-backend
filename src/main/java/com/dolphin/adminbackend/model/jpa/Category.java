@@ -1,4 +1,4 @@
-package com.dolphin.adminbackend.model;
+package com.dolphin.adminbackend.model.jpa;
 
 import jakarta.persistence.*; // For annotations like @Entity, @Id, @Column, etc.
 import java.util.List; // For collections like List.
