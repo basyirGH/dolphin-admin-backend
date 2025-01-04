@@ -6,6 +6,7 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.HttpStatus;
@@ -17,12 +18,14 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
-//to make sure every api request is authenticated
 @Component
+//to make sure every api request is authenticated
 public class JwtAuthorizationFilter extends OncePerRequestFilter {
 
     private final JwtUtil jwtUtil;
@@ -50,22 +53,22 @@ public class JwtAuthorizationFilter extends OncePerRequestFilter {
         try {
             // token check other than login requests
             String accessToken = jwtUtil.resolveToken(request);
+
             if (accessToken == null) {
                 errorDetails.put("code", CustomAPICode.MISSING_TOKEN);
                 errorDetails.put("message", "You must authenticate/login first to retrieve the access token.");
                 response.setStatus(HttpStatus.UNAUTHORIZED.value()); // HTTP 401 Unauthorized
                 response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-
-                // Write the error response
-                mapper.writeValue(response.getWriter(), errorDetails);
+                mapper.writeValue(response.getWriter(), errorDetails); // Write the error response
                 return; // Stop further processing
-            }
-            System.out.println("token : " + accessToken);
+            } 
+            // As soon as this passes, it's kinda like token validation is already done here
+            // validateClaims is just checking expiry date
             Claims claims = jwtUtil.resolveClaims(request);
 
             if (claims != null & jwtUtil.validateClaims(claims)) {
                 String email = claims.getSubject(); 
-                System.out.println("email : " + email);
+                //System.out.println("email : " + email);
                 Authentication authentication = new UsernamePasswordAuthenticationToken(email, "", new ArrayList<>());
                 SecurityContextHolder.getContext().setAuthentication(authentication);
             }

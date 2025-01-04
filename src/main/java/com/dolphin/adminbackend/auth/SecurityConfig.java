@@ -6,6 +6,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.password.NoOpPasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
@@ -15,18 +16,20 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import com.dolphin.adminbackend.service.CustomUserDetailsService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
 
     private final CustomUserDetailsService userDetailsService;
-    private final JwtAuthorizationFilter jwtAuthorizationFilter;
+    private final JwtUtil jwtUtil;
+    ObjectMapper objectMapper = new ObjectMapper();
 
     public SecurityConfig(CustomUserDetailsService customUserDetailsService,
-            JwtAuthorizationFilter jwtAuthorizationFilter) {
+            JwtUtil jwtUtil) {
         this.userDetailsService = customUserDetailsService;
-        this.jwtAuthorizationFilter = jwtAuthorizationFilter;
+        this.jwtUtil = jwtUtil;
 
     }
 
@@ -43,19 +46,24 @@ public class SecurityConfig {
     // security filter.
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-
-        http.csrf().disable()
-                .cors() // Enable CORS
-                .and()
-                .authorizeRequests()
-                .requestMatchers("/rest/auth/**").permitAll()
-                .anyRequest().authenticated()
-                .and()
-                .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-                .and()
-                .addFilterBefore(jwtAuthorizationFilter, UsernamePasswordAuthenticationFilter.class);
-
-        return http.build();
+        return http
+                // Cross-Site Request Forgery (CSRF) protection is disabled. This is often done
+                // for stateless APIs where authentication is handled via tokens (e.g., JWT)
+                // instead of session cookies.
+                .csrf(AbstractHttpConfigurer::disable)
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/rest/auth/**").permitAll()
+                        .anyRequest().authenticated()) // any other requests from permitAll above must be authenticated
+                .addFilterBefore(new JwtAuthorizationFilter(jwtUtil, objectMapper),
+                        UsernamePasswordAuthenticationFilter.class)
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .exceptionHandling(ex -> {
+                    ex.authenticationEntryPoint(
+                            (request, response, authException) -> response.sendError(401, "Unauthorized"));
+                    ex.accessDeniedHandler((request, response, authException) -> response.sendError(403, "Forbidden"));
+                })
+                .build();
     }
 
     /*

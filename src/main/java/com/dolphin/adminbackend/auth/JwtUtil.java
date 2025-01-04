@@ -5,33 +5,32 @@ package com.dolphin.adminbackend.auth;
 import io.jsonwebtoken.*;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 
-import com.dolphin.adminbackend.model.User;
+import com.dolphin.adminbackend.model.jpa.User;
 
 import java.util.Date;
 import java.util.List;
 
-
 @Component
 public class JwtUtil {
 
-
     private final String secret_key = "mysecretkey";
-    private long accessTokenValidity = 1000*60*60; 
+    private long accessTokenValidity = 1000 * 60 * 60 * 24;
 
     private final JwtParser jwtParser;
 
     private final String TOKEN_HEADER = "Authorization";
     private final String TOKEN_PREFIX = "Bearer ";
 
-    public JwtUtil(){
+    public JwtUtil() {
         this.jwtParser = Jwts.parser().setSigningKey(secret_key);
     }
 
     public String createToken(User user) {
         Claims claims = Jwts.claims().setSubject(user.getEmail());
-        claims.put("fullName",user.getFullName());
+        claims.put("fullName", user.getFullName());
         Date tokenCreateTime = new Date();
         Date tokenValidity = new Date(tokenCreateTime.getTime() + accessTokenValidity);
         return Jwts.builder()
@@ -39,10 +38,6 @@ public class JwtUtil {
                 .setExpiration(tokenValidity)
                 .signWith(SignatureAlgorithm.HS256, secret_key)
                 .compact();
-    }
-
-    private Claims parseJwtClaims(String token) {
-        return jwtParser.parseClaimsJws(token).getBody();
     }
 
     public Claims resolveClaims(HttpServletRequest req) {
@@ -61,6 +56,32 @@ public class JwtUtil {
         }
     }
 
+    public Claims parseJwtClaims(String token) {
+        /*
+         * parseClaimsJws inherently performs all the required validations
+         * (signature, expiration, format, etc.).
+         */
+        try {
+            // Parse the token and validate its signature and expiration
+            return jwtParser.parseClaimsJws(token).getBody();
+        } catch (ExpiredJwtException e) {
+            System.out.println("Token has expired: " + e.getMessage());
+            throw e; // Optionally, re-throw or handle as needed
+        } catch (UnsupportedJwtException e) {
+            System.out.println("Unsupported JWT: " + e.getMessage());
+            throw e;
+        } catch (MalformedJwtException e) {
+            System.out.println("Malformed JWT: " + e.getMessage());
+            throw e;
+        } catch (SignatureException e) {
+            System.out.println("Invalid JWT signature: " + e.getMessage());
+            throw e;
+        } catch (IllegalArgumentException e) {
+            System.out.println("Illegal argument in token: " + e.getMessage());
+            throw e;
+        }
+    }
+
     public String resolveToken(HttpServletRequest request) {
 
         String bearerToken = request.getHeader(TOKEN_HEADER);
@@ -70,6 +91,11 @@ public class JwtUtil {
         return null;
     }
 
+    /*
+     * validateToken method already validates the token 
+     * (which inherently includes checking the expiration date via parseClaimsJws), 
+     * then it’s redundant to call validateClaims.
+     */
     public boolean validateClaims(Claims claims) throws AuthenticationException {
         try {
             return claims.getExpiration().after(new Date());
