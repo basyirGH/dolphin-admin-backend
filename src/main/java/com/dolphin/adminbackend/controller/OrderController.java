@@ -4,8 +4,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
-import com.dolphin.adminbackend.model.Order;
-import com.dolphin.adminbackend.model.request.OrderReq;
+import com.dolphin.adminbackend.model.jpa.Order;
+import com.dolphin.adminbackend.model.dto.request.OrderReq;
 import com.dolphin.adminbackend.service.OrderService;
 
 import jakarta.persistence.EntityNotFoundException;
