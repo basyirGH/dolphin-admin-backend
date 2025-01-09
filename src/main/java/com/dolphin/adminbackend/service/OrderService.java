@@ -1,26 +1,32 @@
 package com.dolphin.adminbackend.service;
 
+import java.math.BigDecimal;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import com.dolphin.adminbackend.constant.OrderStatus;
+import com.dolphin.adminbackend.enums.OrderStatus;
+import com.dolphin.adminbackend.enums.MetricType;
+import com.dolphin.adminbackend.event.OrdersPaymentSumMetricEvent;
+import com.dolphin.adminbackend.eventpublisher.MetricEventPublisher;
+import com.dolphin.adminbackend.factory.MetricFactory;
 import com.dolphin.adminbackend.model.dto.request.OrderReq;
 import com.dolphin.adminbackend.model.jpa.Customer;
 import com.dolphin.adminbackend.model.jpa.Order;
 import com.dolphin.adminbackend.model.jpa.OrderItem;
 import com.dolphin.adminbackend.model.jpa.Payment;
 import com.dolphin.adminbackend.model.jpa.Product;
+import com.dolphin.adminbackend.model.statisticaldashboard.Metric;
+import com.dolphin.adminbackend.model.statisticaldashboard.SingleAmountMetric;
 import com.dolphin.adminbackend.repository.CustomerRepo;
 import com.dolphin.adminbackend.repository.OrderRepo;
 import com.dolphin.adminbackend.repository.PaymentRepo;
 import com.dolphin.adminbackend.repository.ProductRepo;
-import com.dolphin.adminbackend.socketio.WebSocketController;
-import com.fasterxml.jackson.core.JsonProcessingException;
 
 import jakarta.persistence.EntityNotFoundException;
 import lombok.extern.slf4j.Slf4j;
@@ -42,17 +48,34 @@ public class OrderService {
     private ProductRepo prodRepo;
 
     @Autowired
-    private WebSocketController webSocketController;
+    private MetricEventPublisher orderEventPublisher;
 
-    // @Autowired
-    // private OrderEventPublisher orderEventPublisher;
+    /*
+     * org.springframework.beans.factory.UnsatisfiedDependencyException:
+     * Requested bean is currently in creation: Is there an unresolvable circular
+     * reference or an asynchronous
+     * initialization dependency?
+     * 
+     * This error indicates a circular dependency issue in the Spring application,
+     * where two or more beans depend on each other in a way that Spring cannot
+     * resolve. Specifically, the stack trace shows that:
+     * orderController → depends on orderService
+     * orderService → depends on webSocketController
+     * webSocketController → depends on totalRevenueStatItem
+     * totalRevenueStatItem → depends on orderService
+     * This circular dependency causes Spring to enter an infinite loop during bean
+     * creation, resulting in the error.
+     * 
+     * @Autowired
+     * private WebSocketController webSocketController;
+     * 
+     */
 
     /**
      * Create a new order.
      *
      * @param order the order to create
      * @return the created order
-     * @throws JsonProcessingException
      */
     public Order createOrder(OrderReq orderRequest) {
 
@@ -67,28 +90,26 @@ public class OrderService {
 
         List<OrderItem> orderItems = orderRequest.getItems().stream()
                 .map(itemRequest -> {
-                    Product product = null;
-                    Optional<Product> optProduct = prodRepo.findById(itemRequest.getProductId());
-                    if (optProduct.isPresent()) {
-                        // At this point, product is not initialized yet (lazy loading), so it will
-                        // appear as an empty object
-                        product = optProduct.get();
-
-                    } else {
-                        throw new EntityNotFoundException("productId " + itemRequest.getProductId() + " not found");
+                    Long productId = itemRequest.getProductId();
+                    Optional<Product> optProduct = prodRepo.findById(productId);
+                    if (!optProduct.isPresent()) {
+                        throw new EntityNotFoundException("productId " + productId + " not found");
                     }
                     return new OrderItem(
                             null, // ID is auto-generated
-                            product,
+                            optProduct.get(), // in OrderItem, product is eargerly fetched so it won't be empty
                             itemRequest.getQuantity(),
-                            product.getPrice(), // product is initialized by accessing any property of it
+                            itemRequest.getPricePerUnit(),
                             null // Order will be set later
                     );
                 }).collect(Collectors.toList());
 
-        Double totalAmount = orderItems.stream()
-                .mapToDouble(item -> item.getPricePerUnit() * item.getQuantity())
-                .sum();
+        // total order amount for all items
+        BigDecimal totalAmount = BigDecimal.ZERO;
+        for (OrderItem item : orderItems) {
+            BigDecimal itemTotal = item.getPricePerUnit().multiply(BigDecimal.valueOf(item.getQuantity()));
+            totalAmount = totalAmount.add(itemTotal);
+        }
 
         Order order = new Order();
         order.setCustomer(customer);
@@ -101,10 +122,17 @@ public class OrderService {
         orderItems.forEach(item -> item.setOrder(order));
 
         Order savedOrder = orderRepo.save(order);
-        //orderEventPublisher.publishOrderCreatedEvent("new order created");
-        webSocketController.handleNewOrder(orderRepo.count());
-        log.info("Saved order ID: {}", savedOrder.getId());
+        orderEventPublisher.publishOrdersCountMetricEvent();
+        //log.info("Saved order ID: {}", savedOrder.getId());
         return savedOrder;
+    }
+
+    public long getOrdersCount() {
+        return orderRepo.count();
+    }
+
+    public BigDecimal getSumOfTotalAmountAllOrders() {
+        return orderRepo.getSumOfTotalAmountAllOrders();
     }
 
     /**

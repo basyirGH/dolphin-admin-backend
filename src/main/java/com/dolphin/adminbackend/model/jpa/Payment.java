@@ -3,7 +3,7 @@ package com.dolphin.adminbackend.model.jpa;
 import jakarta.persistence.*; 
 import java.time.LocalDateTime;
 
-import com.dolphin.adminbackend.constant.PaymentStatus;
+import com.dolphin.adminbackend.enums.PaymentStatus;
 
 @Entity
 @Table(name = "payment")

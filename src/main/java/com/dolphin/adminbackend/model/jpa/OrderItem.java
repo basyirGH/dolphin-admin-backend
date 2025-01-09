@@ -1,5 +1,7 @@
 package com.dolphin.adminbackend.model.jpa;
 
+import java.math.BigDecimal;
+
 import com.fasterxml.jackson.annotation.JsonBackReference;
 
 import jakarta.persistence.*;
@@ -8,7 +10,7 @@ import jakarta.persistence.*;
 @Table(name = "order_item")
 public class OrderItem {
 
-    public OrderItem(Long id, Product product, Integer quantity, Double price, Order order) {
+    public OrderItem(Long id, Product product, Integer quantity, BigDecimal price, Order order) {
         this.id = id;
         this.product = product;
         this.quantity = quantity;
@@ -30,7 +32,7 @@ public class OrderItem {
      * serializer (e.g., Jackson) sees an uninitialized proxy object and serializes
      * it as an empty object ({}).
      */
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JsonBackReference // Marks the parent side, prevents circular serialization (nested object/array in api response)
     private Product product;
 
@@ -43,8 +45,8 @@ public class OrderItem {
     @Column(nullable = false)
     private Integer quantity;
 
-    @Column(nullable = false)
-    private Double pricePerUnit;
+    @Column(name="price_per_unit", nullable = false, precision = 15, scale = 2)
+    private BigDecimal pricePerUnit;
 
     /* setters & getters */
 
@@ -80,11 +82,11 @@ public class OrderItem {
         this.quantity = quantity;
     }
 
-    public Double getPricePerUnit() {
+    public BigDecimal getPricePerUnit() {
         return pricePerUnit;
     }
 
-    public void setPricePerUnit(Double price) {
+    public void setPricePerUnit(BigDecimal price) {
         this.pricePerUnit = price;
     }
 

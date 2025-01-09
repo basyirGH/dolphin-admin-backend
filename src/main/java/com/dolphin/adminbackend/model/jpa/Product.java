@@ -1,5 +1,6 @@
 package com.dolphin.adminbackend.model.jpa;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonManagedReference;
@@ -19,8 +20,8 @@ public class Product {
     @Column(length = 1000)
     private String description;
 
-    @Column(nullable = false)
-    private Double price;
+    @Column(name="price", nullable = false, precision = 15, scale = 2)
+    private BigDecimal price;
 
     @Column(nullable = false)
     private Integer stockQuantity;
@@ -63,11 +64,11 @@ public class Product {
         this.description = description;
     }
 
-    public Double getPrice() {
+    public BigDecimal getPrice() {
         return price;
     }
 
-    public void setPrice(Double price) {
+    public void setPrice(BigDecimal price) {
         this.price = price;
     }
 

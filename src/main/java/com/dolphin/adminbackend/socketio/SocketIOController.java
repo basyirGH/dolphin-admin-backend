@@ -1,28 +1,29 @@
 package com.dolphin.adminbackend.socketio;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
+
 import com.corundumstudio.socketio.AckRequest;
 import com.corundumstudio.socketio.SocketIOClient;
 import com.corundumstudio.socketio.SocketIOServer;
 import com.corundumstudio.socketio.listener.DataListener;
-import com.dolphin.adminbackend.model.dto.Dashboard;
+import com.dolphin.adminbackend.enums.MetricEvent;
+import com.dolphin.adminbackend.eventpublisher.MetricEventPublisher;
 import com.dolphin.adminbackend.model.dto.SocketDetail;
-import com.dolphin.adminbackend.service.DashboardService;
+import com.dolphin.adminbackend.model.statisticaldashboard.Metric;
 
 import lombok.extern.slf4j.Slf4j;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Component;
-
 @Component
 @Slf4j
-public class WebSocketController {
+public class SocketIOController {
 
     protected final SocketIOServer socketServer;
 
     @Autowired
-    private DashboardService dashboardService;
+    private MetricEventPublisher metricEventPublisher;
 
-    public WebSocketController(SocketIOServer socketServer) {
+    public SocketIOController(SocketIOServer socketServer) {
         this.socketServer = socketServer;
         this.socketServer.addEventListener("initDashboard", SocketDetail.class, initDashboard);
     }
@@ -36,13 +37,18 @@ public class WebSocketController {
     public DataListener<SocketDetail> initDashboard = new DataListener<>() {
         @Override
         public void onData(SocketIOClient client, SocketDetail socketDetail, AckRequest ackRequest) {
-            Dashboard dashboard = dashboardService.getDashboard();
-            ackRequest.sendAckData(dashboard);
+            metricEventPublisher.publishOrdersCountMetricEvent();
+            metricEventPublisher.publishOrdersPaymentSumMetricEvent();
+            ackRequest.sendAckData("dashboard initated");
         }
     };
 
-    public void handleNewOrder(long latestOrdersCount) {
-        // Broadcast to all connected clients
-        socketServer.getBroadcastOperations().sendEvent("newOrder", latestOrdersCount);
+    public void broadcastOrdersCountMetric(Metric metric) {        
+        socketServer.getBroadcastOperations().sendEvent(MetricEvent.ORDERS_COUNT.toString(), metric);
     }
+
+    public void broadcastOrdersPaymentSumMetric(Metric metric) {        
+        socketServer.getBroadcastOperations().sendEvent(MetricEvent.ORDERS_PAYMENTS_SUM.toString(), metric);
+    }
+
 }

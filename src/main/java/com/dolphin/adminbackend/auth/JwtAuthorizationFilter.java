@@ -1,6 +1,6 @@
 package com.dolphin.adminbackend.auth;
 
-import com.dolphin.adminbackend.constant.CustomAPICode;
+import com.dolphin.adminbackend.enums.CustomAPICode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
