@@ -5,16 +5,18 @@ import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.util.Date;
 import java.util.List;
+import java.util.function.Supplier;
 
 import com.dolphin.adminbackend.enums.OrderStatus;
-import com.dolphin.adminbackend.eventlistener.MetricEventListener;
+import com.dolphin.adminbackend.eventlistener.DolphinEventListener;
+import com.dolphin.adminbackend.prototype.Simulation;
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 
 @Entity
 @Table(name = "order_")
-@EntityListeners(MetricEventListener.class)
-public class Order {
+@EntityListeners(DolphinEventListener.class)
+public class Order extends Simulation {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -45,10 +47,19 @@ public class Order {
     private OrderStatus status;
 
     @Column(nullable = false)
+    // @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm:ss.SSS")
     private Date orderDate; // LocalDateTime is problematic with Jackson
 
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL)
     private List<Payment> payments;
+
+    @Transient
+    private Supplier<Order> aggregator;
+
+    @Override
+    public Supplier<Order> getAggregator() {
+        return aggregator;
+    }
 
     /* setters & getters */
     public Long getId() {

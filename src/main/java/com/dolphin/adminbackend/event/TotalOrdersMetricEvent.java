@@ -1,6 +1,7 @@
 package com.dolphin.adminbackend.event;
 
-import java.math.BigDecimal;
+import java.util.Date;
+import java.util.List;
 import java.util.function.Supplier;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -8,11 +9,14 @@ import org.springframework.context.ApplicationEvent;
 import org.springframework.stereotype.Component;
 
 import com.dolphin.adminbackend.creator.MetricCreator;
-import com.dolphin.adminbackend.enums.MetricEvent;
-import com.dolphin.adminbackend.enums.MetricType;
+import com.dolphin.adminbackend.enums.MetricEventEnum;
+import com.dolphin.adminbackend.enums.MetricTypeEnum;
+import com.dolphin.adminbackend.model.dto.supplier.TimeframedAmount;
 import com.dolphin.adminbackend.model.statisticaldashboard.Metric;
 import com.dolphin.adminbackend.model.statisticaldashboard.SingleAmountMetric;
 import com.dolphin.adminbackend.service.OrderService;
+
+import lombok.extern.slf4j.Slf4j;
 
 /*
  * Events should ideally be immutable: Once an event is published, 
@@ -30,40 +34,53 @@ import com.dolphin.adminbackend.service.OrderService;
 * 
  */
 @Component
-public class OrdersCountMetricEvent extends ApplicationEvent implements MetricCreator {
+@Slf4j
+public class TotalOrdersMetricEvent extends ApplicationEvent implements MetricCreator {
 
     // Beans
     @Autowired
     public OrderService orderService;
 
+    // Member fields
+    private final MetricTypeEnum type = MetricTypeEnum.SINGLE_AMOUNT;
+    private final MetricEventEnum event = MetricEventEnum.TOTAL_ORDERS;
+    private Date timeOccurred;
+
     // Constructors
-    public OrdersCountMetricEvent() {
+    // ApplicationEvent requires a non-arg constructor
+    public TotalOrdersMetricEvent() {
         super(new Object());
     }
 
-    public OrdersCountMetricEvent(Object source) {
+    public TotalOrdersMetricEvent(Object source) {
         super(source);
-    }    
-
-    // Member fields
-    private final MetricType type = MetricType.SINGLE_AMOUNT;
-    private final MetricEvent event = MetricEvent.ORDERS_COUNT;
+    }
 
     // Methods
     @Override
-    public Metric getMetricCreator() {
-        Supplier<BigDecimal> aggregator = () -> BigDecimal.valueOf(orderService.getOrdersCount());
-        SingleAmountMetric metric = new SingleAmountMetric("Total Orders", false, aggregator, type);
+    public Metric getMetric(Date timeOccurred) {
+        Supplier<List<TimeframedAmount>> aggregator = () -> orderService.getTimeframedSingleAmounts(event);
+        SingleAmountMetric metric = new SingleAmountMetric();
+        metric.setLabel("Total Orders");
+        metric.setAggregator(aggregator);
+        metric.setType(type);
+        metric.setPrefix(null);
+        metric.setIcon("LocalMallIcon");
         return metric;
     }
 
     @Override
-    public MetricType getMetricType() {
+    public MetricTypeEnum getMetricType() {
         return type;
     }
 
     @Override
-    public MetricEvent getMetricEvent() {
+    public MetricEventEnum getMetricEventEnum() {
         return event;
+    }
+
+    @Override
+    public Date getTimeOccured(){
+        return timeOccurred;
     }
 }

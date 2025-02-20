@@ -40,16 +40,14 @@ public class SocketIOConfig {
 
     @Bean
     public SocketIOServer socketIOServer() {
-        // Configuration object holds the server settings
-        Configuration config = new Configuration();
-
-        config.setHostname(socketHost);
-        config.setPort(socketPort);
-        config.setOrigin("http://localhost:5000");
-        config.setAllowHeaders("authorization,content-type");
+        Configuration privateSocketConfig = new Configuration();
+        privateSocketConfig.setHostname(socketHost);
+        privateSocketConfig.setPort(socketPort);
+        privateSocketConfig.setOrigin("http://localhost:5000");
+        privateSocketConfig.setAllowHeaders("authorization,content-type");
 
         // Authorization listener
-        config.setAuthorizationListener(data -> {
+        privateSocketConfig.setAuthorizationListener(data -> {
             String token = null;
             String headerToken = data.getHttpHeaders().get("Authorization");
             String cookieToken = null;
@@ -78,7 +76,13 @@ public class SocketIOConfig {
             return new AuthorizationResult(false);
         });
 
-        server = new SocketIOServer(config);
+        // Configuration publicSocketConfig = new Configuration();
+        // publicSocketConfig.setHostname(socketHost);
+        // publicSocketConfig.setPort(socketPort);
+        // publicSocketConfig.setOrigin("http://localhost:5000");
+        // publicSocketConfig.setAllowHeaders("content-type");
+
+        server = new SocketIOServer(privateSocketConfig);
         server.start();
 
         server.addConnectListener(client -> log.info("Client connected: {}", client.getSessionId()));

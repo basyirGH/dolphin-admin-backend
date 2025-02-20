@@ -16,7 +16,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
 @Controller
-@RequestMapping("/rest/auth")
+@RequestMapping("/api/v1/auth")
 public class AuthController {
 
     private final AuthenticationManager authenticationManager;
@@ -30,24 +30,40 @@ public class AuthController {
     }
 
     @ResponseBody
-    @RequestMapping(value = "/login",method = RequestMethod.POST)
-    public ResponseEntity login(@RequestBody LoginReq loginReq)  {
+    @RequestMapping(value = "/login", method = RequestMethod.POST)
+    public ResponseEntity login(@RequestBody LoginReq loginReq) {
 
         try {
-            // internally call loadUserByUsername() method from CustomUserDetailsService class
-            Authentication authentication =
-                    authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(loginReq.getEmail(), loginReq.getPassword()));
+            // internally call loadUserByUsername() method from CustomUserDetailsService
+            // class
+            Authentication authentication = authenticationManager
+                    .authenticate(new UsernamePasswordAuthenticationToken(loginReq.getEmail(), loginReq.getPassword()));
             String email = authentication.getName();
-            User user = new User(email,"");
+            User user = new User(email, "");
             String token = jwtUtil.createToken(user);
             LoginRes loginRes = new LoginRes(email, token);
 
             return ResponseEntity.ok(loginRes);
 
-        }catch (BadCredentialsException e){
-            ErrorRes errorResponse = new ErrorRes(HttpStatus.BAD_REQUEST,"Invalid username or password");
+        } catch (BadCredentialsException e) {
+            ErrorRes errorResponse = new ErrorRes(HttpStatus.BAD_REQUEST, "Invalid username or password");
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
-        }catch (Exception e){
+        } catch (Exception e) {
+            ErrorRes errorResponse = new ErrorRes(HttpStatus.BAD_REQUEST, e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+        }
+    }
+
+    @ResponseBody
+    @RequestMapping(value = "/guest", method = RequestMethod.GET)
+    public ResponseEntity requestGuestToken() {
+
+        try {
+            User user = new User("guest", "guest");
+            String token = jwtUtil.createToken(user);
+            LoginRes loginRes = new LoginRes("guest", token);
+            return ResponseEntity.ok(loginRes);
+        } catch (Exception e) {
             ErrorRes errorResponse = new ErrorRes(HttpStatus.BAD_REQUEST, e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
         }

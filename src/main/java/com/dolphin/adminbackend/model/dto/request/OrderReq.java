@@ -1,26 +1,23 @@
 package com.dolphin.adminbackend.model.dto.request;
 
+import java.util.Date;
 import java.util.List;
 
-public class OrderReq {
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@Setter
+public class OrderReq implements SimulatableReq{
 
     private Long customerId;
     private List<OrderItemReq> items;
+    private Date orderDate;
+    private final String SIM_ID = "NEW_ORDER_SIM";
 
-    // Getters and setters
-    public Long getCustomerId() {
-        return customerId;
+    @Override
+    public String getSimID() {
+        return SIM_ID;
     }
 
-    public void setCustomerId(Long customerId) {
-        this.customerId = customerId;
-    }
-
-    public List<OrderItemReq> getItems() {
-        return items;
-    }
-
-    public void setItems(List<OrderItemReq> items) {
-        this.items = items;
-    }
 }

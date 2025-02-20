@@ -1,14 +1,10 @@
 package com.dolphin.adminbackend.auth;
 
-import com.dolphin.adminbackend.enums.CustomAPICode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.ExpiredJwtException;
-import jakarta.servlet.FilterChain;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.http.Cookie;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -17,12 +13,15 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
-import java.io.IOException;
-import java.net.URLDecoder;
-import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
+import com.dolphin.adminbackend.enums.CustomAPICode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 @Component
 //to make sure every api request is authenticated
@@ -43,9 +42,10 @@ public class JwtAuthorizationFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
         Map<String, Object> errorDetails = new HashMap<>();
 
-        // skip token check for login requests
-        boolean isLoginRequest = "/rest/auth/login".equals(request.getRequestURI());
-        if (isLoginRequest) {
+        // skip token check for login/guests requests
+        boolean isLoginRequest = "/api/v1/auth/login".equals(request.getRequestURI());
+        boolean isGuestRequest = "/api/v1/auth/guest".equals(request.getRequestURI());
+        if (isLoginRequest || isGuestRequest) {
             filterChain.doFilter(request, response);
             return;
         }

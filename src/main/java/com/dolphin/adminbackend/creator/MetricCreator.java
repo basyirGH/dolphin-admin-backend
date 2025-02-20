@@ -1,14 +1,14 @@
 package com.dolphin.adminbackend.creator;
 
-import org.springframework.stereotype.Component;
+import java.util.Date;
 
-import com.dolphin.adminbackend.enums.MetricEvent;
-import com.dolphin.adminbackend.enums.MetricType;
+import com.dolphin.adminbackend.enums.MetricEventEnum;
+import com.dolphin.adminbackend.enums.MetricTypeEnum;
 import com.dolphin.adminbackend.model.statisticaldashboard.Metric;
 
-@Component
 public interface MetricCreator {
-    public Metric getMetricCreator();
-    public MetricType getMetricType();
-    public MetricEvent getMetricEvent();
+    public Metric getMetric(Date timeOccured);
+    public MetricTypeEnum getMetricType();
+    public MetricEventEnum getMetricEventEnum();
+    public Date getTimeOccured();
 }

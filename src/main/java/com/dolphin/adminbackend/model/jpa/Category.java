@@ -1,9 +1,16 @@
 package com.dolphin.adminbackend.model.jpa;
 
 import jakarta.persistence.*; // For annotations like @Entity, @Id, @Column, etc.
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
 import java.util.List; // For collections like List.
 
+@Setter
+@Getter
 @Entity
+@NoArgsConstructor
 @Table(name = "category")
 public class Category {
     @Id
@@ -20,30 +27,14 @@ public class Category {
     @OneToMany(mappedBy = "category", cascade = CascadeType.ALL)
     private List<Product> products;
 
-    // setters & getters
-    public Long getId() {
-        return id;
-    }
+    @Column(name="line_color", nullable = false)
+    private String lineColor;
 
-    public void setId(Long id) {
+    // Constructors
+    public Category(Long id, String name, String lineColor){
         this.id = id;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
         this.name = name;
+        this.lineColor = lineColor;
     }
-
-    public List<Product> getProducts() {
-        return products;
-    }
-
-    public void setProducts(List<Product> products) {
-        this.products = products;
-    }
-
     
 }

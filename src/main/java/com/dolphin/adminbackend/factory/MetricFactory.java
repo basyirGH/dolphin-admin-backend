@@ -1,12 +1,14 @@
 package com.dolphin.adminbackend.factory;
 
+import java.util.Date;
 import java.util.EnumMap;
 import java.util.List;
 
 import org.springframework.stereotype.Component;
 
 import com.dolphin.adminbackend.creator.MetricCreator;
-import com.dolphin.adminbackend.enums.MetricEvent;
+import com.dolphin.adminbackend.enums.MetricEventEnum;
+import com.dolphin.adminbackend.enums.TimeframeEnum;
 import com.dolphin.adminbackend.model.statisticaldashboard.Metric;
 
 import lombok.extern.slf4j.Slf4j;
@@ -29,18 +31,24 @@ public class MetricFactory {
      */
 
     // Member fields
-    private EnumMap<MetricEvent, MetricCreator> creators;
+    private EnumMap<MetricEventEnum, MetricCreator> creators;
 
     // Constructor
     public MetricFactory(List<MetricCreator> creatorBeans) {
-        this.creators = new EnumMap<>(MetricEvent.class);
+        this.creators = new EnumMap<>(MetricEventEnum.class);
         for (MetricCreator creator : creatorBeans) {
-            creators.put(creator.getMetricEvent(), creator);
+            creators.put(creator.getMetricEventEnum(), creator);
         }
     }
 
     // Methods
-    public Metric getMetric(MetricEvent event) {
-        return this.creators.get(event).getMetricCreator();
+    public Metric getMetric(MetricEventEnum event, Date timeOccured) {
+        try {
+            Metric metric = this.creators.get(event).getMetric(timeOccured);
+            return metric;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
     }
 }

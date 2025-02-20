@@ -1,34 +1,57 @@
 package com.dolphin.adminbackend.service;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
-import java.util.function.Supplier;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEvent;
 import org.springframework.stereotype.Service;
 
+import com.dolphin.adminbackend.creator.MetricCreator;
+import com.dolphin.adminbackend.enums.MetricEventEnum;
 import com.dolphin.adminbackend.enums.OrderStatus;
-import com.dolphin.adminbackend.enums.MetricType;
-import com.dolphin.adminbackend.event.OrdersPaymentSumMetricEvent;
-import com.dolphin.adminbackend.eventpublisher.MetricEventPublisher;
-import com.dolphin.adminbackend.factory.MetricFactory;
+import com.dolphin.adminbackend.enums.TimeframeEnum;
+import com.dolphin.adminbackend.event.AvgQuantityPerOrderEvent;
+import com.dolphin.adminbackend.event.AvgRevenueMetricEvent;
+import com.dolphin.adminbackend.event.RealTimeTrendsEvent;
+import com.dolphin.adminbackend.event.TotalOrdersByDemographyEvent;
+import com.dolphin.adminbackend.event.TotalOrdersMetricEvent;
+import com.dolphin.adminbackend.event.TotalRevenueMetricEvent;
+import com.dolphin.adminbackend.eventpublisher.DolphinEventPublisher;
+import com.dolphin.adminbackend.model.dto.pojo.Timeframe;
+import com.dolphin.adminbackend.model.dto.queryresult.RevenueByCategoryOverTime;
+import com.dolphin.adminbackend.model.dto.queryresult.TotalOrdersByDemography;
 import com.dolphin.adminbackend.model.dto.request.OrderReq;
+import com.dolphin.adminbackend.model.dto.supplier.Line;
+import com.dolphin.adminbackend.model.dto.supplier.TimeframedAmount;
+import com.dolphin.adminbackend.model.jpa.Category;
 import com.dolphin.adminbackend.model.jpa.Customer;
 import com.dolphin.adminbackend.model.jpa.Order;
 import com.dolphin.adminbackend.model.jpa.OrderItem;
 import com.dolphin.adminbackend.model.jpa.Payment;
 import com.dolphin.adminbackend.model.jpa.Product;
-import com.dolphin.adminbackend.model.statisticaldashboard.Metric;
-import com.dolphin.adminbackend.model.statisticaldashboard.SingleAmountMetric;
 import com.dolphin.adminbackend.repository.CustomerRepo;
 import com.dolphin.adminbackend.repository.OrderRepo;
 import com.dolphin.adminbackend.repository.PaymentRepo;
 import com.dolphin.adminbackend.repository.ProductRepo;
+import com.dolphin.adminbackend.utility.ColorUtility;
+import com.dolphin.adminbackend.utility.DateUtility;
+import com.dolphin.adminbackend.utility.EnumUtility;
 
 import jakarta.persistence.EntityNotFoundException;
+import lombok.extern.java.Log;
 import lombok.extern.slf4j.Slf4j;
 
 @Service
@@ -48,7 +71,10 @@ public class OrderService {
     private ProductRepo prodRepo;
 
     @Autowired
-    private MetricEventPublisher orderEventPublisher;
+    private DolphinEventPublisher metricEventPublisher;
+
+    @Autowired
+    private EnumUtility enumUtility;
 
     /*
      * org.springframework.beans.factory.UnsatisfiedDependencyException:
@@ -80,6 +106,7 @@ public class OrderService {
     public Order createOrder(OrderReq orderRequest) {
 
         Customer customer = null;
+        Date orderDate = orderRequest.getOrderDate();
         Long customerId = orderRequest.getCustomerId();
         Optional<Customer> optionalCustomer = custRepo.findById(customerId);
         if (optionalCustomer.isPresent()) {
@@ -116,24 +143,282 @@ public class OrderService {
         order.setItems(orderItems);
         order.setTotalAmount(totalAmount);
         order.setStatus(OrderStatus.PENDING);
-        order.setOrderDate(new Date());
+        order.setOrderDate(orderDate);
 
         // Set the order reference for all items
         orderItems.forEach(item -> item.setOrder(order));
 
         Order savedOrder = orderRepo.save(order);
-        orderEventPublisher.publishOrdersCountMetricEvent();
-        //log.info("Saved order ID: {}", savedOrder.getId());
+        TotalRevenueMetricEvent totalRevenueEvent = new TotalRevenueMetricEvent(this);
+        TotalOrdersMetricEvent totalOrdersEvent = new TotalOrdersMetricEvent(this);
+        AvgRevenueMetricEvent avgRevenueEvent = new AvgRevenueMetricEvent(this);
+        AvgQuantityPerOrderEvent avgQuantityEvent = new AvgQuantityPerOrderEvent(this);
+        RealTimeTrendsEvent revenuePerSecondEvent = new RealTimeTrendsEvent(this, orderDate);
+        TotalOrdersByDemographyEvent ordersByDemographyEvent = new TotalOrdersByDemographyEvent(this);
+
+        List<ApplicationEvent> events = new ArrayList<ApplicationEvent>();
+        events.add(totalRevenueEvent);
+        events.add(totalOrdersEvent);
+        events.add(avgRevenueEvent);
+        events.add(avgQuantityEvent);
+        events.add(revenuePerSecondEvent);
+        events.add(ordersByDemographyEvent);
+        metricEventPublisher.publishMultiple(events);
+
         return savedOrder;
     }
 
-    public long getOrdersCount() {
-        return orderRepo.count();
+    public List<TimeframedAmount> getTimeframedSingleAmounts(MetricEventEnum event) {
+        List<TimeframedAmount> timeframedAmounts = new ArrayList<>();
+        LocalDateTime now = LocalDateTime.now();
+        for (TimeframeEnum timeframeEnum : TimeframeEnum.values()) {
+            Timeframe timeframe = DateUtility.getStartOfTimeFrame(timeframeEnum, now);
+            LocalDateTime currentStartLocalDate = timeframe.getCurrentStartDate();
+            LocalDateTime prevStartLocalDate = timeframe.getPrevStartDate();
+            LocalDateTime prevLocalLastSecond = timeframe.getPrevLastSecond();
+            Date currentStartDate = DateUtility.convertToDate(currentStartLocalDate);
+            Date previousStartDate = DateUtility.convertToDate(prevStartLocalDate);
+            Date prevLastSecond = DateUtility.convertToDate(prevLocalLastSecond);
+            Date currentDate = DateUtility.convertToDate(now);
+            BigDecimal amount = null, previousAmount = null, rateOfChange = null;
+            String startMessage = timeframe.getMessage();
+
+            switch (event) {
+                case TOTAL_ORDERS:
+                    amount = getOrdersCountBetween(currentStartDate, currentDate).setScale(2, RoundingMode.HALF_UP);
+                    previousAmount = getOrdersCountBetween(previousStartDate, prevLastSecond);
+                    break;
+                case TOTAL_REVENUE:
+                    amount = getSumOfTotalAmountBetween(currentStartDate, currentDate).setScale(2,
+                            RoundingMode.HALF_UP);
+                    previousAmount = getSumOfTotalAmountBetween(previousStartDate, prevLastSecond);
+                    break;
+                case AVERAGE_QUANTITY:
+                    amount = getAvgQuantityPerOrderBetween(currentStartDate, currentDate).setScale(2,
+                            RoundingMode.HALF_UP);
+                    previousAmount = getAvgQuantityPerOrderBetween(previousStartDate, prevLastSecond);
+                    break;
+                case AVERAGE_REVENUE:
+                    amount = getAvgTotalAmountBetween(currentStartDate, currentDate).setScale(2, RoundingMode.HALF_UP);
+                    previousAmount = getAvgTotalAmountBetween(previousStartDate, prevLastSecond);
+                    break;
+                default:
+                    break;
+            }
+
+            if (previousAmount.compareTo(BigDecimal.ZERO) != 0) {
+                rateOfChange = amount.divide(previousAmount, 10, RoundingMode.HALF_UP)
+                        .multiply(BigDecimal.valueOf(100))
+                        .setScale(0, RoundingMode.HALF_UP);
+            }
+
+            // log.info("timeframe: " + timeframeEnum.toString());
+            // log.info("currentStartDate: " + currentStartDate);
+            // log.info("previousStartDate: " + previousStartDate);
+            // log.info("prevLastSecond: " + prevLastSecond);
+            TimeframedAmount tfAmount = new TimeframedAmount(timeframeEnum, currentStartDate, previousStartDate, amount,
+                    previousAmount, startMessage, rateOfChange);
+            timeframedAmounts.add(tfAmount);
+        }
+        return timeframedAmounts;
     }
 
-    public BigDecimal getSumOfTotalAmountAllOrders() {
-        return orderRepo.getSumOfTotalAmountAllOrders();
+    public List<TimeframedAmount> getTimeframedTotalOrdersByDemography() {
+        List<TimeframedAmount> timeframedAmounts = new ArrayList<>();
+        LocalDateTime now = LocalDateTime.now();
+        for (TimeframeEnum timeframeEnum : TimeframeEnum.values()) {
+            Timeframe startFrame = DateUtility.getStartOfTimeFrame(timeframeEnum, now);
+            LocalDateTime local = startFrame.getCurrentStartDate();
+            Date startDate = DateUtility.convertToDate(local);
+            Date endDate = DateUtility.convertToDate(now);
+            List<List<Object>> series = null;
+            List<TotalOrdersByDemography> totals = orderRepo.findTotalOrdersByDemographyBetween(startDate, endDate);
+            Map<String, Long> demographyAndOrdersMap = new HashMap<>();
+            Map<String, String> demographyAndColorMap = new HashMap<>();
+
+            for (TotalOrdersByDemography total : totals) {
+                String currentGender = total.getGender();
+                String ageRange = DateUtility.getAgeRange(total.getAge());
+                String demography = currentGender.concat(ageRange); // "MALE(31-40)"
+                String demographyColor = ColorUtility.getDemographicColor(currentGender, ageRange);
+
+                if (demographyAndOrdersMap.containsKey(demography)) {
+                    demographyAndOrdersMap.put(demography, demographyAndOrdersMap.get(demography) + total.getCount());
+                } else {
+                    demographyAndOrdersMap.put(demography, total.getCount());
+                    demographyAndColorMap.put(demography, demographyColor);
+                }
+            }
+
+            // Automatically sorted with TreeSet
+            Set<String> demographySet = new TreeSet<>(demographyAndOrdersMap.keySet());
+            if (!demographySet.isEmpty()) {
+                series = new ArrayList<>();
+                for (String demography : demographySet) {
+                    List<Object> demographyDataList = new ArrayList<>();
+                    demographyDataList.add(demography);
+                    demographyDataList.add(demographyAndOrdersMap.get(demography));
+                    demographyDataList.add(demographyAndColorMap.get(demography));
+                    series.add(demographyDataList);
+                }
+            }
+
+            TimeframedAmount tfAmount = new TimeframedAmount(timeframeEnum, series);
+            timeframedAmounts.add(tfAmount);
+        }
+        return timeframedAmounts;
     }
+
+    public List<Line> getTrendLines(Date timeOccured) {
+        // Get (x,y) coordinate of the line chart at this instant.
+        List<Line> lines = new ArrayList<>();
+        List<MetricEventEnum> eventEnums = enumUtility.getSingleAmountEventEnums();
+
+        for (MetricEventEnum eventEnum : eventEnums) {
+            Line line = null;
+            boolean flagged = false;
+            String lineColor = "#0A84FF", lineType = "areaspline";
+            String yTitle = null, xTitle = "Time";
+            String lineName = null, subMetricName = null, subMetricPrefix = null;
+            BigDecimal metricAmount = null, subMetricAmount = null;
+            switch (eventEnum) {
+                case TOTAL_REVENUE:
+                    metricAmount = orderRepo.findRevenueCurrentSecond(timeOccured);
+                    subMetricAmount = orderRepo.findAvgRevenueCurrentMinute();
+                    lineName = "Revenue In Real-Time";
+                    subMetricName = "avg/min";
+                    subMetricPrefix = "RM";
+                    yTitle = "RM";
+                    xTitle = "Time (2min)";
+                    flagged = true;
+                    break;
+                case TOTAL_ORDERS:
+                    metricAmount = orderRepo.findOrdersCountCurrentSecond(timeOccured);
+                    subMetricAmount = orderRepo.findAvgOrdersCountCurrentMinute().setScale(2, RoundingMode.HALF_UP);
+                    lineName = "Orders In Real-Time";
+                    subMetricName = "avg/min";
+                    yTitle = "Orders";
+                    xTitle = "Time (2min)";
+                    flagged = true;
+                    break;
+                default:
+                    break;
+            }
+            if (flagged) {
+                line = createLine(
+                        timeOccured,
+                        metricAmount,
+                        subMetricAmount,
+                        lineType,
+                        lineName,
+                        eventEnum,
+                        lineColor,
+                        subMetricName,
+                        subMetricPrefix,
+                        yTitle,
+                        xTitle);
+                lines.add(line);
+            }
+        }
+        return lines;
+    }
+
+    public Line createLine(Date currentDate, BigDecimal metricAmount, BigDecimal subMetricAmount, String lineType,
+            String lineName, MetricEventEnum eventEnum, String lineColor, String subMetricName, String subMetricPrefix,
+            String yTitle,
+            String xTitle) {
+
+        // Add data to line
+        List<Object> point = new ArrayList<>();
+        point.add(currentDate);
+        if (metricAmount == null) {
+            point.add(BigDecimal.ZERO);
+        } else {
+            point.add(metricAmount);
+        }
+        List<List<Object>> points = new ArrayList<>();
+        points.add(point);
+
+        // Add additional data to this line chart, but it's not part of the line.
+        Map<String, Object> subMetric = new HashMap<>();
+        if (subMetricAmount == null) {
+            subMetricAmount = BigDecimal.ZERO;
+        }
+        subMetric.put("name", subMetricName);
+        subMetric.put("data", subMetricAmount);
+        subMetric.put("prefix", subMetricPrefix);
+        Line line = new Line(lineType, lineName, eventEnum, lineColor, points, subMetric, yTitle, xTitle);
+        return line;
+    }
+
+    public BigDecimal getOrdersCountBetween(Date startDate, Date endDate) {
+        return BigDecimal.valueOf(orderRepo.findCountOfOrdersBetween(startDate, endDate));
+    }
+
+    public BigDecimal getSumOfTotalAmountBetween(Date startDate, Date endDate) {
+        BigDecimal sum = orderRepo.findSumOfTotalAmountBetween(startDate, endDate);
+        if (sum == null) {
+            return BigDecimal.ZERO;
+        }
+        return sum;
+    }
+
+    public BigDecimal getAvgQuantityPerOrderBetween(Date startDate, Date endDate) {
+        BigDecimal avg = orderRepo.findAvgQuantityPerOrderBetween(startDate, endDate);
+        if (avg == null) {
+            avg = BigDecimal.ZERO;
+        }
+        return avg;
+    }
+
+    public BigDecimal getAvgTotalAmountBetween(Date startDate, Date endDate) {
+        BigDecimal avg = orderRepo.findAvgOfTotalAmountBetween(startDate, endDate);
+        if (avg == null) {
+            avg = BigDecimal.ZERO;
+        }
+        return avg;
+    }
+
+    public long getYesterdaysPartialOrderCount() {
+        return orderRepo.findTodaysPartialOrderCount();
+    }
+
+    // public List<Line> getRevenueByCategoryPerSecond() {
+    // List<RevenueByCategoryOverTime> revenues = new ArrayList<>();
+    // if (orderRepo.findRevenueByCategoryPerSecond().isEmpty()) {
+    // List<Category> categories = orderRepo.findCategoriesInOrderItems();
+    // for (Category c : categories) {
+    // RevenueByCategoryOverTime revenue = new RevenueByCategoryOverTime(c.getId(),
+    // c.getName(), new Date(), BigDecimal.ZERO, c.getLineColor());
+    // revenues.add(revenue);
+    // }
+    // } else {
+    // revenues = orderRepo.findRevenueByCategoryPerSecond();
+    // }
+    // Map<String, String> categoryNameAndColor = new HashMap<>();
+    // for (RevenueByCategoryOverTime revenue : revenues) {
+    // categoryNameAndColor.put(revenue.getCategoryName(), revenue.getLineColor());
+    // }
+    // List<Line> lines = new ArrayList<>();
+    // for (String distinctCategory : categoryNameAndColor.keySet()) {
+    // List<List<Object>> points = new ArrayList<>();
+    // for (RevenueByCategoryOverTime revenue : revenues) {
+    // String categoryName = revenue.getCategoryName();
+    // if (!categoryName.equals(distinctCategory))
+    // continue;
+    // Date orderDate = revenue.getOrderDate();
+    // BigDecimal amount = revenue.getAmount();
+    // List<Object> point = new ArrayList<>();
+    // point.add(orderDate);
+    // point.add(amount);
+    // points.add(point);
+    // }
+    // Line line = new Line("line", distinctCategory,
+    // categoryNameAndColor.get(distinctCategory), points);
+    // lines.add(line);
+    // }
+    // return lines;
+    // }
 
     /**
      * Retrieve an order by its ID.
