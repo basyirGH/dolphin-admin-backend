@@ -13,6 +13,7 @@
 	<version>0.0.1-SNAPSHOT</version>
 	<name>adminbackend</name>
 	<description>REST Endpoints for an admin web app</description>
+	<packaging>jar</packaging>
 	<url/>
 	<licenses>
 		<license/>

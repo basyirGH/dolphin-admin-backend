@@ -1,0 +1,14 @@
+#version: #tells Docker Compose which features are available.
+#Version 3.8 is designed for Docker Engine 19.03+.
+
+services:
+  dolphinadminbackend:
+    # image: dolphin-backend
+    # container_name: dolphinadminbackend
+    ports:
+      - "8080:8080"  # Spring Boot app
+      - "8081:8081"  # WebSocket
+    environment:
+      SOCKET_HOST: "0.0.0.0"
+      SOCKET_PORT: 8081
+

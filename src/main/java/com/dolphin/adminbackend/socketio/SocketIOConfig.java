@@ -6,6 +6,7 @@ import com.corundumstudio.socketio.SocketIOServer;
 import com.dolphin.adminbackend.auth.JwtUtil;
 
 import io.jsonwebtoken.Claims;
+import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -30,20 +31,28 @@ public class SocketIOConfig {
 
     private final JwtUtil jwtUtil;
 
-    @Value("${socket.host}")
+    @Value("${socket.host:0.0.0.0}") // Default to 0.0.0.0 if not set
     private String socketHost;
-    @Value("${socket.port}")
+    @Value("${socket.port:8081}") // Default port
     private int socketPort;
 
     // create a socket server
     private SocketIOServer server;
 
+    @PostConstruct
+    public void init() {
+        log.info("Socket Host: " + socketHost);
+        log.info("Socket Port: " + socketPort);
+    }
+
     @Bean
     public SocketIOServer socketIOServer() {
+        log.info("****************attempting socket conn");
         Configuration privateSocketConfig = new Configuration();
         privateSocketConfig.setHostname(socketHost);
+        log.info("******************socket host name:" + privateSocketConfig.getHostname());
         privateSocketConfig.setPort(socketPort);
-        privateSocketConfig.setOrigin("http://localhost:5000");
+        privateSocketConfig.setOrigin("*");
         privateSocketConfig.setAllowHeaders("authorization,content-type");
 
         // Authorization listener
@@ -52,13 +61,13 @@ public class SocketIOConfig {
             String headerToken = data.getHttpHeaders().get("Authorization");
             String cookieToken = null;
             List<Entry<String, String>> headers = data.getHttpHeaders().entries();
-            if (headerToken == null) {  // somehow the Authorization header is undetected from browser origins
+            if (headerToken == null) { // somehow the Authorization header is undetected from browser origins
                 for (Entry<String, String> entry : headers) {
-                    //System.out.println("(header) " + entry.getKey() + ": " + entry.getValue());
+                    // System.out.println("(header) " + entry.getKey() + ": " + entry.getValue());
                     if (entry.getKey().equals("Cookie")) { // get Authorization from Cookie header instead
                         cookieToken = extractAuthorizationToken(entry.getValue());
-                        //System.out.println("cookie token: " + cookieToken);
-                        token = cookieToken; 
+                        // System.out.println("cookie token: " + cookieToken);
+                        token = cookieToken;
                         break;
                     }
                 }
@@ -72,7 +81,7 @@ public class SocketIOConfig {
                 String userFullName = claims.getSubject();
                 data.getHttpHeaders().add("User", userFullName);
                 return new AuthorizationResult(true);
-            } 
+            }
             return new AuthorizationResult(false);
         });
 
