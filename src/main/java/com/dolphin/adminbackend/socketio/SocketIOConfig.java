@@ -47,10 +47,10 @@ public class SocketIOConfig {
 
     @Bean
     public SocketIOServer socketIOServer() {
-        log.info("*******************attempting socket conn");
+        log.info("__________attempting socket conn");
         Configuration privateSocketConfig = new Configuration();
         privateSocketConfig.setHostname(socketHost);
-        log.info("******************socket host name:" + privateSocketConfig.getHostname());
+        log.info("__________socket host name:" + privateSocketConfig.getHostname());
         privateSocketConfig.setPort(socketPort);
         privateSocketConfig.setOrigin("*");
         privateSocketConfig.setAllowHeaders("authorization,content-type");
