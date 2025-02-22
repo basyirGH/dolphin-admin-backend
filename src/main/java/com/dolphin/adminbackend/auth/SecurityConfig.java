@@ -56,7 +56,7 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/v1/auth/guest", "/socket.io/**") // Allow guest token 
+                        .requestMatchers("/api/v1/auth/guest") // Allow guest token 
                         .permitAll()
                         .anyRequest().authenticated()) // any other requests from permitAll above must be authenticated
                 .addFilterBefore(new JwtAuthorizationFilter(jwtUtil, objectMapper),

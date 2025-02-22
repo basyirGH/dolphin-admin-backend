@@ -59,12 +59,13 @@ public class SocketIOConfig {
         privateSocketConfig.setAuthorizationListener(data -> {
             String token = null;
             String headerToken = data.getHttpHeaders().get("Authorization");
+            String paramToken = data.getSingleUrlParam("token");
             String cookieToken = null;
             List<Entry<String, String>> headers = data.getHttpHeaders().entries();
             if (headerToken == null) { // somehow the Authorization header is undetected from browser origins
                 for (Entry<String, String> entry : headers) {
-                    // System.out.println("(header) " + entry.getKey() + ": " + entry.getValue());
-                    if (entry.getKey().equals("Cookie")) { // get Authorization from Cookie header instead
+                    // get Authorization from Cookie header instead
+                    if (entry.getKey().equals("Cookie")) {
                         cookieToken = extractAuthorizationToken(entry.getValue());
                         // System.out.println("cookie token: " + cookieToken);
                         token = cookieToken;
@@ -72,15 +73,21 @@ public class SocketIOConfig {
                     }
                 }
             } else {
-                token = headerToken; // postman authorization header works
+                token = headerToken; // postman authorization header works (but only locally)
             }
-            // System.out.println("token: " + data.getHttpHeaders().get("Authorization"));
-            // log.info("data.authtoken: ", data.getAuthToken().toString()); // null
+
+            // prioritize query param
+            if (paramToken != null) {
+                token = paramToken;
+            }
+
             if (token != null) {
                 Claims claims = jwtUtil.parseJwtClaims(token); // token validation happens here
-                String userFullName = claims.getSubject();
-                data.getHttpHeaders().add("User", userFullName);
-                return new AuthorizationResult(true);
+                if (claims != null) {
+                    String userFullName = claims.getSubject();
+                    data.getHttpHeaders().add("User", userFullName);
+                    return new AuthorizationResult(true);
+                }
             }
             return new AuthorizationResult(false);
         });
