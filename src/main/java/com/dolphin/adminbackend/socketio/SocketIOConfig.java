@@ -55,9 +55,10 @@ public class SocketIOConfig {
         privateSocketConfig.setPort(socketPort);
         privateSocketConfig.setOrigin("*");
         privateSocketConfig.setAllowHeaders("authorization,content-type");
+        log.info("********** Pre-Authorization Listener **********"); 
 
-        // Authorization listener
         privateSocketConfig.setAuthorizationListener(data -> {
+            log.info("********** Authorization Listener CALLED **********"); // Crucial check
             String token = null;
             String headerToken = data.getHttpHeaders().get("Authorization");
             String paramToken = data.getSingleUrlParam("token");
