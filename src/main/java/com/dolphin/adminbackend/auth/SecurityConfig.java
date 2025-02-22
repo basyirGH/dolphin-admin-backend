@@ -18,8 +18,11 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import com.dolphin.adminbackend.service.CustomUserDetailsService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import lombok.extern.slf4j.Slf4j;
+
 @Configuration
 @EnableWebSecurity
+@Slf4j
 public class SecurityConfig {
 
     private final CustomUserDetailsService userDetailsService;
@@ -53,7 +56,7 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/v1/auth/guest") // Allow guest token 
+                        .requestMatchers("/api/v1/auth/guest", "/socket.io/**") // Allow guest token 
                         .permitAll()
                         .anyRequest().authenticated()) // any other requests from permitAll above must be authenticated
                 .addFilterBefore(new JwtAuthorizationFilter(jwtUtil, objectMapper),
@@ -62,6 +65,7 @@ public class SecurityConfig {
                 .exceptionHandling(ex -> {
                     ex.authenticationEntryPoint(
                             (request, response, authException) -> response.sendError(401, "Unauthorized"));
+                            log.info("ex: " + ex.toString());
                     ex.accessDeniedHandler((request, response, authException) -> response.sendError(403, "Forbidden"));
                 })
                 .build();
