@@ -12,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -61,6 +62,7 @@ public class SocketIOConfig {
             String headerToken = data.getHttpHeaders().get("Authorization");
             String paramToken = data.getSingleUrlParam("token");
             String cookieToken = null;
+
             List<Entry<String, String>> headers = data.getHttpHeaders().entries();
             if (headerToken == null) { // somehow the Authorization header is undetected from browser origins
                 for (Entry<String, String> entry : headers) {
@@ -78,9 +80,21 @@ public class SocketIOConfig {
 
             // prioritize query param
             if (paramToken != null) {
-                log.info("paramToken: " + paramToken);
                 token = paramToken;
             }
+
+            //debug
+            log.info("headerToken: " + headerToken);
+            log.info("paramToken: " + paramToken);
+            log.info("cookieToken: " + cookieToken);
+            log.info("objectToken: " + data.getAuthToken().toString());
+            log.info("url: " + data.getUrl());
+            log.info("address: " + data.getAddress());
+            Map<String, List<String>> params = data.getUrlParams();
+            log.info("params: ");
+            for (String key : params.keySet()) {
+                log.info(key + ": " + params.get(key));
+            } 
 
             if (token != null) {
                 Claims claims = jwtUtil.parseJwtClaims(token); // token validation happens here
