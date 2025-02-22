@@ -78,6 +78,7 @@ public class SocketIOConfig {
 
             // prioritize query param
             if (paramToken != null) {
+                log.info("paramToken: " + paramToken);
                 token = paramToken;
             }
 
