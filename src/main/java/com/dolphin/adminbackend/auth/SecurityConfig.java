@@ -1,5 +1,8 @@
 package com.dolphin.adminbackend.auth;
 
+import java.io.PrintWriter;
+import java.io.StringWriter;
+
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -45,8 +48,11 @@ public class SecurityConfig {
         return authenticationManagerBuilder.build();
     }
 
-    // we want every request to be authenticated before going through spring
-    // security filter.
+    // Why not just anyRequest().permitAll() and rely on the filter?
+
+    // You might be tempted to just use .anyRequest().permitAll() and rely solely on
+    // the JwtAuthorizationFilter to handle the guest and login paths. While this
+    // might technically work, it's strongly discouraged.
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         return http
@@ -56,7 +62,7 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/v1/auth/guest") // Allow guest token 
+                        .requestMatchers("/", "/api/v1/auth/guest", "/api/v1/auth/login")
                         .permitAll()
                         .anyRequest().authenticated()) // any other requests from permitAll above must be authenticated
                 .addFilterBefore(new JwtAuthorizationFilter(jwtUtil, objectMapper),
@@ -64,9 +70,39 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .exceptionHandling(ex -> {
                     ex.authenticationEntryPoint(
-                            (request, response, authException) -> response.sendError(401, "Unauthorized"));
-                            log.info("ex: " + ex.toString());
-                    ex.accessDeniedHandler((request, response, authException) -> response.sendError(403, "Forbidden"));
+                            (request, response, authException) -> {
+                                response.sendError(401, "Unauthorized");
+
+                                // Get the stack trace as a String
+                                StringWriter sw = new StringWriter();
+                                PrintWriter pw = new PrintWriter(sw);
+                                authException.printStackTrace(pw);
+                                String stackTrace = sw.toString();
+
+                                // Log the stack trace
+                                log.error("Authentication Exception: " + authException.getMessage()); // Log the message
+                                                                                                      // too
+                                log.error(stackTrace); // Log the full stack trace
+
+                                // Or, for more structured logging (recommended):
+                                log.error("Authentication Exception", authException); // This logs the exception *and*
+                                                                                      // its stack trace
+
+                            });
+                    ex.accessDeniedHandler((request, response, authException) -> {
+                        response.sendError(403, "Forbidden");
+
+                        StringWriter sw = new StringWriter();
+                        PrintWriter pw = new PrintWriter(sw);
+                        authException.printStackTrace(pw);
+                        String stackTrace = sw.toString();
+
+                        log.error("Access Denied Exception: " + authException.getMessage());
+                        log.error(stackTrace);
+
+                        log.error("Access Denied Exception", authException);
+                    });
+
                 })
                 .build();
     }
@@ -113,7 +149,7 @@ public class SecurityConfig {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.addAllowedOrigin("*"); // Allow React app
         configuration.addAllowedMethod("*"); // Allow all HTTP methods
-        configuration.addAllowedHeader("*"); // Allow all headers        
+        configuration.addAllowedHeader("*"); // Allow all headers
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);

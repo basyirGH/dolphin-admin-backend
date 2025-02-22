@@ -34,7 +34,7 @@ public class SocketIOConfig {
 
     @Value("${socket.host:0.0.0.0}") // Default to 0.0.0.0 if not set
     private String socketHost;
-    @Value("${socket.port:8080}") // Default port
+    @Value("${socket.port:8081}") // Default port
     private int socketPort;
 
     // create a socket server
