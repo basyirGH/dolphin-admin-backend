@@ -47,7 +47,7 @@ public class SocketIOConfig {
 
     @Bean
     public SocketIOServer socketIOServer() {
-        log.info("****************attempting socket conn");
+        log.info("*******************attempting socket conn");
         Configuration privateSocketConfig = new Configuration();
         privateSocketConfig.setHostname(socketHost);
         log.info("******************socket host name:" + privateSocketConfig.getHostname());
