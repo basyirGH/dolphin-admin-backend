@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -30,9 +31,9 @@ public class JwtAuthorizationFilter extends OncePerRequestFilter {
     private final JwtUtil jwtUtil;
     private final ObjectMapper mapper;
 
-    public JwtAuthorizationFilter(JwtUtil jwtUtil, ObjectMapper mapper) {
-        this.jwtUtil = jwtUtil;
+    public JwtAuthorizationFilter(ObjectMapper mapper, JwtUtil jwtUtil) {
         this.mapper = mapper;
+        this.jwtUtil = jwtUtil;
     }
 
     // This method will be called for every request to the application. This method

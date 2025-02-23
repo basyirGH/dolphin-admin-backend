@@ -65,7 +65,7 @@ public class SecurityConfig {
                         .requestMatchers("/", "/api/v1/auth/guest", "/api/v1/auth/login")
                         .permitAll()
                         .anyRequest().authenticated()) // any other requests from permitAll above must be authenticated
-                .addFilterBefore(new JwtAuthorizationFilter(jwtUtil, objectMapper),
+                .addFilterBefore(new JwtAuthorizationFilter(objectMapper, jwtUtil),
                         UsernamePasswordAuthenticationFilter.class)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .exceptionHandling(ex -> {
