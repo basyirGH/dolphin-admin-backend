@@ -3,7 +3,11 @@
 package com.dolphin.adminbackend.auth;
 
 import io.jsonwebtoken.*;
+import jakarta.annotation.PostConstruct;
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.extern.slf4j.Slf4j;
+
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
@@ -14,19 +18,35 @@ import java.util.Date;
 import java.util.List;
 
 @Component
+@Slf4j
 public class JwtUtil {
 
-    private final String secret_key = "mysecretkey";
+    @Value("${jwt.secret}")
+    private String secretKey;
     private long accessTokenValidity = 1000 * 60 * 60 * 24;
 
-    private final JwtParser jwtParser;
+    private JwtParser jwtParser;
 
     private final String TOKEN_HEADER = "Authorization";
     private final String TOKEN_PREFIX = "Bearer ";
 
-    public JwtUtil() {
-        this.jwtParser = Jwts.parser().setSigningKey(secret_key);
+    @PostConstruct
+    public void init() { // Use @PostConstruct for initialization
+        if (secretKey == null || secretKey.isEmpty()) {
+            log.error("JWT_SECRET_KEY environment variable is not set!");
+            throw new RuntimeException("JWT_SECRET_KEY must be set."); // Or handle differently
+        }
+
+        jwtParser = Jwts.parser().setSigningKey(secretKey);
+        log.info("JWT Secret Key: LOADED");
+
+        // Log the *encoded* key only in development, NEVER in production
+        // log.debug("Encoded JWT Secret Key (DEV ONLY): " + encodedSecretKey);
     }
+
+    // public JwtUtil() {
+    //     this.jwtParser = Jwts.parser().setSigningKey(secret_key);
+    // }
 
     public String createToken(User user) {
         Claims claims = Jwts.claims().setSubject(user.getEmail());
@@ -36,7 +56,7 @@ public class JwtUtil {
         return Jwts.builder()
                 .setClaims(claims)
                 .setExpiration(tokenValidity)
-                .signWith(SignatureAlgorithm.HS256, secret_key)
+                .signWith(SignatureAlgorithm.HS256, secretKey)
                 .compact();
     }
 

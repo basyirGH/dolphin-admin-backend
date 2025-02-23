@@ -57,56 +57,56 @@ public class SocketIOConfig {
         privateSocketConfig.setAllowHeaders("authorization,content-type");
         log.info("********** Pre-Authorization Listener **********"); 
 
-        // privateSocketConfig.setAuthorizationListener(data -> {
-        //     log.info("********** Authorization Listener CALLED **********"); // Crucial check
-        //     String token = null;
-        //     String headerToken = data.getHttpHeaders().get("Authorization");
-        //     String paramToken = data.getSingleUrlParam("token");
-        //     String cookieToken = null;
+        privateSocketConfig.setAuthorizationListener(data -> {
+            log.info("********** Authorization Listener CALLED **********"); // Crucial check
+            String token = null;
+            String headerToken = data.getHttpHeaders().get("Authorization");
+            String paramToken = data.getSingleUrlParam("token");
+            String cookieToken = null;
 
-        //     List<Entry<String, String>> headers = data.getHttpHeaders().entries();
-        //     if (headerToken == null) { // somehow the Authorization header is undetected from browser origins
-        //         for (Entry<String, String> entry : headers) {
-        //             // get Authorization from Cookie header instead
-        //             if (entry.getKey().equals("Cookie")) {
-        //                 cookieToken = extractAuthorizationToken(entry.getValue());
-        //                 // System.out.println("cookie token: " + cookieToken);
-        //                 token = cookieToken;
-        //                 break;
-        //             }
-        //         }
-        //     } else {
-        //         token = headerToken; // postman authorization header works (but only locally)
-        //     }
+            List<Entry<String, String>> headers = data.getHttpHeaders().entries();
+            if (headerToken == null) { // somehow the Authorization header is undetected from browser origins
+                for (Entry<String, String> entry : headers) {
+                    // get Authorization from Cookie header instead
+                    if (entry.getKey().equals("Cookie")) {
+                        cookieToken = extractAuthorizationToken(entry.getValue());
+                        // System.out.println("cookie token: " + cookieToken);
+                        token = cookieToken;
+                        break;
+                    }
+                }
+            } else {
+                token = headerToken; // postman authorization header works (but only locally)
+            }
 
-        //     // prioritize query param
-        //     if (paramToken != null) {
-        //         token = paramToken;
-        //     }
+            // prioritize query param
+            if (paramToken != null) {
+                token = paramToken;
+            }
 
-        //     //debug
-        //     log.info("headerToken: " + headerToken);
-        //     log.info("paramToken: " + paramToken);
-        //     log.info("cookieToken: " + cookieToken);
-        //     log.info("objectToken: " + data.getAuthToken().toString());
-        //     log.info("url: " + data.getUrl());
-        //     log.info("address: " + data.getAddress());
-        //     Map<String, List<String>> params = data.getUrlParams();
-        //     log.info("params: ");
-        //     for (String key : params.keySet()) {
-        //         log.info(key + ": " + params.get(key));
-        //     } 
+            //debug
+            log.info("headerToken: " + headerToken);
+            log.info("paramToken: " + paramToken);
+            log.info("cookieToken: " + cookieToken);
+            // log.info("objectToken: " + data.getAuthToken().toString());
+            log.info("url: " + data.getUrl());
+            log.info("address: " + data.getAddress());
+            Map<String, List<String>> params = data.getUrlParams();
+            log.info("params: ");
+            for (String key : params.keySet()) {
+                log.info(key + ": " + params.get(key));
+            } 
 
-        //     if (token != null) {
-        //         Claims claims = jwtUtil.parseJwtClaims(token); // token validation happens here
-        //         if (claims != null) {
-        //             String userFullName = claims.getSubject();
-        //             data.getHttpHeaders().add("User", userFullName);
-        //             return new AuthorizationResult(true);
-        //         }
-        //     }
-        //     return new AuthorizationResult(false);
-        // });
+            if (token != null) {
+                Claims claims = jwtUtil.parseJwtClaims(token); // token validation happens here
+                if (claims != null) {
+                    String userFullName = claims.getSubject();
+                    data.getHttpHeaders().add("User", userFullName);
+                    return new AuthorizationResult(true);
+                }
+            }
+            return new AuthorizationResult(false);
+        });
 
         // Configuration publicSocketConfig = new Configuration();
         // publicSocketConfig.setHostname(socketHost);
