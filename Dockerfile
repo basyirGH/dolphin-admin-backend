@@ -10,7 +10,7 @@ WORKDIR /app
 # Copy the JAR file into the image (avoid hardcoding the version)
 COPY target/*.jar app.jar
 
-EXPOSE 8081
+EXPOSE 8080
 
 # Command to execute the application
 ENTRYPOINT ["java", "-jar", "app.jar"]
