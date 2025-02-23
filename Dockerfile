@@ -10,8 +10,7 @@ WORKDIR /app
 # Copy the JAR file into the image (avoid hardcoding the version)
 COPY target/*.jar app.jar
 
-# Expose the default Spring Boot port
-EXPOSE 8080
+EXPOSE 8081
 
 # Command to execute the application
 ENTRYPOINT ["java", "-jar", "app.jar"]
