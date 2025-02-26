@@ -1,14 +1,21 @@
 #version: #tells Docker Compose which features are available.
 #Version 3.8 is designed for Docker Engine 19.03+.
 
-# services:
-  # dolphinadminbackend:
-    # image: dolphin-backend
-    # container_name: dolphinadminbackend
-    # ports:
-      # - "8080:8080"  # Spring Boot app
-      # - "8081:8081"  # WebSocket
-    # environment:
-    #   SOCKET_HOST: "0.0.0.0"
-    #   SOCKET_PORT: 8081
+services:
+  app:
+    build: .
+    image: dolphin-socket:latest  # Using a consistent image name
+    container_name: socket8081
+    # restart: always
+    ports:  
+      - "${APP_PORT:-8081}:8081"
+    environment:
+      - SOCKET_HOST=0.0.0.0
+      - SOCKET_PORT=8081
+      - JWTSIGN_SECRET=${JWTSIGN_SECRET}
+      - ALLOWED_ORIGIN=http://localhost:5000
+      - SPRING_DATASOURCE_URL=${SPRING_DATASOURCE_URL}
+      - SPRING_DATASOURCE_USERNAME=${SPRING_DATASOURCE_USERNAME}
+      - SPRING_DATASOURCE_PASSWORD=${SPRING_DATASOURCE_PASSWORD}
+      # - MY_CUSTOM_ENV=${MY_CUSTOM_ENV}
 

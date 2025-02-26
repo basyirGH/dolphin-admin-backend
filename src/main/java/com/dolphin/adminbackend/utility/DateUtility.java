@@ -25,7 +25,8 @@ public class DateUtility {
                 formatter = DateTimeFormatter.ofPattern("h:mm a");
                 prevStartDate = currentStartDate.withMinute(0).withSecond(0).withNano(0).minusHours(1);
                 prevLastSecond = prevStartDate.withMinute(59).withSecond(59).withNano(999_999_999);
-                message = message.concat(currentStartDate.format(formatter)).concat(", and their progress compared to " + prevStartDate.format(DateTimeFormatter.ofPattern("h a")) + "'s full tracking.");
+                // message = message.concat(currentStartDate.format(formatter)).concat(", and their progress compared to " + prevStartDate.format(DateTimeFormatter.ofPattern("h a")) + "'s full tracking.");
+                message = message.concat("the beginning of the current hour, and their progress compared to last hour's full tracking.");
                 break;
             case DAILY:
                 currentStartDate = now.toLocalDate().atStartOfDay(); // 12:00 AM today
@@ -62,7 +63,7 @@ public class DateUtility {
                 break;
             case ALL_TIME:
                 currentStartDate = LocalDateTime.of(1970, 1, 1, 0, 0, 0, 0); // Unix epoch
-                message = message.concat("inception");
+                message = message.concat("inception.");
                 break;
             default:
                 currentStartDate = LocalDateTime.of(1970, 1, 1, 0, 0, 0, 0); // Unix epoch

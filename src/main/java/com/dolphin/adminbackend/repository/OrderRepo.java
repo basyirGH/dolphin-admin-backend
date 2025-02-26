@@ -35,27 +35,27 @@ public interface OrderRepo extends JpaRepository<Order, Long> {
 
         @Query("SELECT SUM(o.totalAmount) " +
                         "FROM Order o " +
-                        "WHERE FUNCTION('DATE', o.orderDate) = CURRENT_DATE " +
+                        "WHERE FUNCTION('DATE', o.orderDate) = FUNCTION('DATE', :timeOccurred) " +
                         "AND FUNCTION('TIME_FORMAT', o.orderDate, '%H:%i:%s') = FUNCTION('TIME_FORMAT', :timeOccurred, '%H:%i:%s') ")
         BigDecimal findRevenueCurrentSecond(@Param("timeOccurred") Date timeOccurred);
 
         @Query("SELECT AVG(o.totalAmount) " +
                         "FROM Order o " +
-                        "WHERE FUNCTION('DATE', o.orderDate) = CURRENT_DATE " +
-                        "AND FUNCTION('TIME_FORMAT', o.orderDate, '%H:%i') = FUNCTION('TIME_FORMAT', CURRENT_TIME, '%H:%i')")
-        BigDecimal findAvgRevenueCurrentMinute();
+                        "WHERE FUNCTION('DATE', o.orderDate) = FUNCTION('DATE', :timeOccurred) " +
+                        "AND FUNCTION('TIME_FORMAT', o.orderDate, '%H:%i') = FUNCTION('TIME_FORMAT', :timeOccurred, '%H:%i')")
+        BigDecimal findAvgRevenueCurrentMinute(@Param("timeOccurred") Date timeOccurred);
 
         @Query("SELECT COUNT(o.id) " +
                         "FROM Order o " +
-                        "WHERE FUNCTION('DATE', o.orderDate) = CURRENT_DATE " +
+                        "WHERE FUNCTION('DATE', o.orderDate) = FUNCTION('DATE', :timeOccurred) " +
                         "AND FUNCTION('TIME_FORMAT', o.orderDate, '%H:%i:%s') = FUNCTION('TIME_FORMAT', :timeOccurred, '%H:%i:%s') ")
         BigDecimal findOrdersCountCurrentSecond(@Param("timeOccurred") Date timeOccurred);
 
         @Query("SELECT CAST(COUNT(*) AS double) / 60 " +
                         "FROM Order o " +
-                        "WHERE FUNCTION('DATE', o.orderDate) = CURRENT_DATE " +
-                        "AND FUNCTION('TIME_FORMAT', o.orderDate, '%H:%i') = FUNCTION('TIME_FORMAT', CURRENT_TIME, '%H:%i')")
-        BigDecimal findAvgOrdersCountCurrentMinute();
+                        "WHERE FUNCTION('DATE', o.orderDate) = FUNCTION('DATE', :timeOccurred) " +
+                        "AND FUNCTION('TIME_FORMAT', o.orderDate, '%H:%i') = FUNCTION('TIME_FORMAT', :timeOccurred, '%H:%i')")
+        BigDecimal findAvgOrdersCountCurrentMinute(@Param("timeOccurred") Date timeOccurred);
 
         @Query("select new com.dolphin.adminbackend.model.dto.queryresult.TotalOrdersByDemography(c.age, c.gender, count(o.id)) "
                         +
@@ -76,16 +76,16 @@ public interface OrderRepo extends JpaRepository<Order, Long> {
          * sort correctly because it is acting on the unmodified orderDate (which still
          * includes the time).
          */
-        @Query("SELECT new com.dolphin.adminbackend.model.dto.queryresult.RevenueByCategoryOverTime(p.category.id, c.name, o.orderDate, "
-                        +
-                        "(oi.pricePerUnit * oi.quantity) as amount, c.lineColor) " +
-                        "FROM Order o " +
-                        "JOIN OrderItem oi ON oi.order.id = o.id " +
-                        "JOIN Product p ON p.id = oi.product.id " +
-                        "JOIN Category c ON c.id = p.category.id " +
-                        "WHERE FUNCTION('DATE', o.orderDate) = CURRENT_DATE " +
-                        "AND FUNCTION('TIME_FORMAT', o.orderDate, '%H:%i:%s') = FUNCTION('TIME_FORMAT', CURRENT_TIME, '%H:%i:%s') ")
-        List<RevenueByCategoryOverTime> findRevenueByCategoryPerSecond();
+        // @Query("SELECT new com.dolphin.adminbackend.model.dto.queryresult.RevenueByCategoryOverTime(p.category.id, c.name, o.orderDate, "
+        //                 +
+        //                 "(oi.pricePerUnit * oi.quantity) as amount, c.lineColor) " +
+        //                 "FROM Order o " +
+        //                 "JOIN OrderItem oi ON oi.order.id = o.id " +
+        //                 "JOIN Product p ON p.id = oi.product.id " +
+        //                 "JOIN Category c ON c.id = p.category.id " +
+        //                 "WHERE FUNCTION('DATE', o.orderDate) = CURRENT_DATE " +
+        //                 "AND FUNCTION('TIME_FORMAT', o.orderDate, '%H:%i:%s') = FUNCTION('TIME_FORMAT', CURRENT_TIME, '%H:%i:%s') ")
+        // List<RevenueByCategoryOverTime> findRevenueByCategoryPerSecond();
 
         @Query("SELECT DISTINCT new Category(p.category.id, c.name, c.lineColor) " +
                         "from Order o " +
@@ -94,21 +94,21 @@ public interface OrderRepo extends JpaRepository<Order, Long> {
                         "join Category c on p.category.id = c.id")
         List<Category> findCategoriesInOrderItems();
 
-        @Query(value = "select count(id) " +
-                        "from order_ o " +
-                        "where date(order_date) = current_date() " +
-                        "and time_format(order_date, '%H:%i') >= '00:00' " +
-                        "and time_format(order_date, '%H:%i') <= time_format(current_time(), '%H:%i')", nativeQuery = true)
-        Long findTodaysPartialOrderCount();
+        // @Query(value = "select count(id) " +
+        //                 "from order_ o " +
+        //                 "where date(order_date) = current_date() " +
+        //                 "and time_format(order_date, '%H:%i') >= '00:00' " +
+        //                 "and time_format(order_date, '%H:%i') <= time_format(current_time(), '%H:%i')", nativeQuery = true)
+        // Long findTodaysPartialOrderCount();
 
-        @Query(value = "select count(id) " +
-                        "from order_ o " +
-                        "where date(order_date) = date_sub(current_date(), interval '1' day) " + // used to subtract a
-                                                                                                 // specified time
-                                                                                                 // interval from a
-                                                                                                 // date.
-                        "and time_format(order_date, '%H:%i') >= '00:00' " +
-                        "and time_format(order_date, '%H:%i') <= time_format(current_time(), '%H:%i')", nativeQuery = true)
-        Long findYesterdaysPartialOrderCount();
+        // @Query(value = "select count(id) " +
+        //                 "from order_ o " +
+        //                 "where date(order_date) = date_sub(current_date(), interval '1' day) " + // used to subtract a
+        //                                                                                          // specified time
+        //                                                                                          // interval from a
+        //                                                                                          // date.
+        //                 "and time_format(order_date, '%H:%i') >= '00:00' " +
+        //                 "and time_format(order_date, '%H:%i') <= time_format(current_time(), '%H:%i')", nativeQuery = true)
+        // Long findYesterdaysPartialOrderCount();
 
 }

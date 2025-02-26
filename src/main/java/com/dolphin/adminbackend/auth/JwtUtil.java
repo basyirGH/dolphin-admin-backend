@@ -21,7 +21,7 @@ import java.util.List;
 @Slf4j
 public class JwtUtil {
 
-    @Value("${jwt.secret}")
+    @Value("${jwtsign.secret}")
     private String secretKey;
     private long accessTokenValidity = 1000 * 60 * 60 * 24;
 
@@ -76,7 +76,7 @@ public class JwtUtil {
         }
     }
 
-    public Claims parseJwtClaims(String token) {
+    public Claims parseJwtClaims(String token){
         /*
          * parseClaimsJws inherently performs all the required validations
          * (signature, expiration, format, etc.).
@@ -85,21 +85,17 @@ public class JwtUtil {
             // Parse the token and validate its signature and expiration
             return jwtParser.parseClaimsJws(token).getBody();
         } catch (ExpiredJwtException e) {
-            System.out.println("Token has expired: " + e.getMessage());
-            throw e; // Optionally, re-throw or handle as needed
+            log.error("Token has expired: " + e.getMessage());
         } catch (UnsupportedJwtException e) {
-            System.out.println("Unsupported JWT: " + e.getMessage());
-            throw e;
+            log.error("Unsupported JWT: " + e.getMessage());
         } catch (MalformedJwtException e) {
-            System.out.println("Malformed JWT: " + e.getMessage());
-            throw e;
+            log.error("Malformed JWT: " + e.getMessage());
         } catch (SignatureException e) {
-            System.out.println("Invalid JWT signature: " + e.getMessage());
-            throw e;
+            log.error("Invalid JWT signature: " + e.getMessage());
         } catch (IllegalArgumentException e) {
-            System.out.println("Illegal argument in token: " + e.getMessage());
-            throw e;
+            log.error("Illegal argument in token: " + e.getMessage());
         }
+        return null;
     }
 
     public String resolveToken(HttpServletRequest request) {

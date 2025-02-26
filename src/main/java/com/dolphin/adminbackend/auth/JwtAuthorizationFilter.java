@@ -42,7 +42,7 @@ public class JwtAuthorizationFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
         Map<String, Object> errorDetails = new HashMap<>();
 
-        // skip token check for login/guests requests
+        // skip token check for public requests
         boolean isHealthRequest = "/".equals(request.getRequestURI());
         boolean isLoginRequest = "/api/v1/auth/login".equals(request.getRequestURI());
         boolean isGuestRequest = "/api/v1/auth/guest".equals(request.getRequestURI());

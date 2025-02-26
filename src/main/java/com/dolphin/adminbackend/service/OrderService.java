@@ -284,7 +284,7 @@ public class OrderService {
             switch (eventEnum) {
                 case TOTAL_REVENUE:
                     metricAmount = orderRepo.findRevenueCurrentSecond(timeOccured);
-                    subMetricAmount = orderRepo.findAvgRevenueCurrentMinute();
+                    subMetricAmount = orderRepo.findAvgRevenueCurrentMinute(timeOccured);
                     lineName = "Revenue In Real-Time";
                     subMetricName = "avg/min";
                     subMetricPrefix = "RM";
@@ -294,7 +294,7 @@ public class OrderService {
                     break;
                 case TOTAL_ORDERS:
                     metricAmount = orderRepo.findOrdersCountCurrentSecond(timeOccured);
-                    subMetricAmount = orderRepo.findAvgOrdersCountCurrentMinute().setScale(2, RoundingMode.HALF_UP);
+                    subMetricAmount = orderRepo.findAvgOrdersCountCurrentMinute(timeOccured).setScale(2, RoundingMode.HALF_UP);
                     lineName = "Orders In Real-Time";
                     subMetricName = "avg/min";
                     yTitle = "Orders";
@@ -377,10 +377,6 @@ public class OrderService {
             avg = BigDecimal.ZERO;
         }
         return avg;
-    }
-
-    public long getYesterdaysPartialOrderCount() {
-        return orderRepo.findTodaysPartialOrderCount();
     }
 
     // public List<Line> getRevenueByCategoryPerSecond() {
