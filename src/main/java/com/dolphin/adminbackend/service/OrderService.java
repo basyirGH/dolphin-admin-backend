@@ -269,7 +269,7 @@ public class OrderService {
         return timeframedAmounts;
     }
 
-    public List<Line> getTrendLines(Date timeOccured) {
+    public List<Line> getLastFewMinutesTrends(Date timeOccured) {
         // Get (x,y) coordinate of the line chart at this instant.
         List<Line> lines = new ArrayList<>();
         List<MetricEventEnum> eventEnums = enumUtility.getSingleAmountEventEnums();
@@ -285,20 +285,21 @@ public class OrderService {
                 case TOTAL_REVENUE:
                     metricAmount = orderRepo.findRevenueCurrentSecond(timeOccured);
                     subMetricAmount = orderRepo.findAvgRevenueCurrentMinute(timeOccured);
-                    lineName = "Revenue In Real-Time";
+                    lineName = "Revenue Trend (Last Few Minutes)";
                     subMetricName = "avg/min";
                     subMetricPrefix = "RM";
                     yTitle = "RM";
-                    xTitle = "Time (2min)";
+                    xTitle = "Time";
                     flagged = true;
                     break;
                 case TOTAL_ORDERS:
                     metricAmount = orderRepo.findOrdersCountCurrentSecond(timeOccured);
-                    subMetricAmount = orderRepo.findAvgOrdersCountCurrentMinute(timeOccured).setScale(2, RoundingMode.HALF_UP);
-                    lineName = "Orders In Real-Time";
+                    subMetricAmount = orderRepo.findAvgOrdersCountCurrentMinute(timeOccured).setScale(2,
+                            RoundingMode.HALF_UP);
+                    lineName = "Orders Trend (Last Few Minutes)";
                     subMetricName = "avg/min";
                     yTitle = "Orders";
-                    xTitle = "Time (2min)";
+                    xTitle = "Time";
                     flagged = true;
                     break;
                 default:

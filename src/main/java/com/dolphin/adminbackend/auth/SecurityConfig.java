@@ -62,7 +62,7 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/", "/socket.io/**")
+                        .requestMatchers("/api/v1/auth/guest", "/socket.io/**")
                         .permitAll()
                         .anyRequest().authenticated()) // any other requests from permitAll above must be authenticated
                 .addFilterBefore(new JwtAuthorizationFilter(jwtUtil, objectMapper),

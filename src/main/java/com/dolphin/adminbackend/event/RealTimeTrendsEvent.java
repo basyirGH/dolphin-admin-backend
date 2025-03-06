@@ -41,7 +41,7 @@ public class RealTimeTrendsEvent extends ApplicationEvent implements MetricCreat
     // Methods
     @Override
     public Metric getMetric(Date timeOccured) {
-        Supplier<List<Line>> aggregator = () -> orderService.getTrendLines(timeOccured);
+        Supplier<List<Line>> aggregator = () -> orderService.getLastFewMinutesTrends(timeOccured);
         LineChartMetric metric = new LineChartMetric(null, aggregator, type);
         return metric;
     }
