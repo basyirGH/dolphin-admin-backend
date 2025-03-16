@@ -13,10 +13,14 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEvent;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import com.dolphin.adminbackend.creator.MetricCreator;
@@ -34,17 +38,16 @@ import com.dolphin.adminbackend.model.dto.pojo.Timeframe;
 import com.dolphin.adminbackend.model.dto.queryresult.RevenueByCategoryOverTime;
 import com.dolphin.adminbackend.model.dto.queryresult.TotalOrdersByDemography;
 import com.dolphin.adminbackend.model.dto.request.OrderReq;
+import com.dolphin.adminbackend.model.dto.request.SimulatableReq;
 import com.dolphin.adminbackend.model.dto.supplier.Line;
 import com.dolphin.adminbackend.model.dto.supplier.TimeframedAmount;
 import com.dolphin.adminbackend.model.jpa.Category;
 import com.dolphin.adminbackend.model.jpa.Customer;
 import com.dolphin.adminbackend.model.jpa.Order;
 import com.dolphin.adminbackend.model.jpa.OrderItem;
-import com.dolphin.adminbackend.model.jpa.Payment;
 import com.dolphin.adminbackend.model.jpa.Product;
 import com.dolphin.adminbackend.repository.CustomerRepo;
 import com.dolphin.adminbackend.repository.OrderRepo;
-import com.dolphin.adminbackend.repository.PaymentRepo;
 import com.dolphin.adminbackend.repository.ProductRepo;
 import com.dolphin.adminbackend.utility.ColorUtility;
 import com.dolphin.adminbackend.utility.DateUtility;
@@ -53,6 +56,7 @@ import com.dolphin.adminbackend.utility.EnumUtility;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.extern.java.Log;
 import lombok.extern.slf4j.Slf4j;
+import okhttp3.Response;
 
 @Service
 @Slf4j
@@ -60,9 +64,6 @@ public class OrderService {
 
     @Autowired
     private OrderRepo orderRepo;
-
-    @Autowired
-    private PaymentRepo paymentRepo;
 
     @Autowired
     private CustomerRepo custRepo;
@@ -103,7 +104,7 @@ public class OrderService {
      * @param order the order to create
      * @return the created order
      */
-    public Order createOrder(OrderReq orderRequest) {
+    public Order createOrder(OrderReq orderRequest, UUID simID) {
 
         Customer customer = null;
         Date orderDate = orderRequest.getOrderDate();
@@ -126,6 +127,7 @@ public class OrderService {
                             null, // ID is auto-generated
                             optProduct.get(), // in OrderItem, product is eargerly fetched so it won't be empty
                             itemRequest.getQuantity(),
+                            //optProduct.get().getPrice(),
                             itemRequest.getPricePerUnit(),
                             null // Order will be set later
                     );
@@ -144,16 +146,39 @@ public class OrderService {
         order.setTotalAmount(totalAmount);
         order.setStatus(OrderStatus.PENDING);
         order.setOrderDate(orderDate);
+        // log.info("id: " + simID);
+        order.setSimID(simID);
 
         // Set the order reference for all items
         orderItems.forEach(item -> item.setOrder(order));
 
         Order savedOrder = orderRepo.save(order);
+        // publishEventsWhenOrderCreated(orderDate);
+
+        return savedOrder;
+    }
+
+    public Order createOrders(List<SimulatableReq> orders, UUID simID) {
+        Order created = null;
+        for (SimulatableReq order : orders) {
+            try {
+                created = createOrder((OrderReq) order, simID);
+            } catch (Exception e) {
+                log.error("Exception occurred when creating one of the order.", e);
+                return created;
+            }
+        }
+        publishEventsWhenOrderCreated(created.getOrderDate());
+        return created;
+    }
+
+    public void publishEventsWhenOrderCreated(Date timeOccurred) {
+
         TotalRevenueMetricEvent totalRevenueEvent = new TotalRevenueMetricEvent(this);
         TotalOrdersMetricEvent totalOrdersEvent = new TotalOrdersMetricEvent(this);
         AvgRevenueMetricEvent avgRevenueEvent = new AvgRevenueMetricEvent(this);
         AvgQuantityPerOrderEvent avgQuantityEvent = new AvgQuantityPerOrderEvent(this);
-        RealTimeTrendsEvent revenuePerSecondEvent = new RealTimeTrendsEvent(this, orderDate);
+        RealTimeTrendsEvent realTimeTrendsEvent = new RealTimeTrendsEvent(this, timeOccurred);
         TotalOrdersByDemographyEvent ordersByDemographyEvent = new TotalOrdersByDemographyEvent(this);
 
         List<ApplicationEvent> events = new ArrayList<ApplicationEvent>();
@@ -161,18 +186,28 @@ public class OrderService {
         events.add(totalOrdersEvent);
         events.add(avgRevenueEvent);
         events.add(avgQuantityEvent);
-        events.add(revenuePerSecondEvent);
+        events.add(realTimeTrendsEvent);
         events.add(ordersByDemographyEvent);
         metricEventPublisher.publishMultiple(events);
 
-        return savedOrder;
+    }
+
+    public LocalDateTime getFirstSimulationOrder(LocalDateTime orderDate) {
+        Order order = orderRepo.findOrderByDate(DateUtility.convertToDate(orderDate));
+        if (order != null) {
+            UUID simID = order.getSimID();
+            LocalDateTime firstSimOrderDate = orderRepo.findEarliestOrderDate(simID.toString());
+            return firstSimOrderDate;
+        }
+        return orderDate;
     }
 
     public List<TimeframedAmount> getTimeframedSingleAmounts(MetricEventEnum event) {
         List<TimeframedAmount> timeframedAmounts = new ArrayList<>();
         LocalDateTime now = LocalDateTime.now();
+        LocalDateTime firstSimOrderDate = getFirstSimulationOrder(now);
         for (TimeframeEnum timeframeEnum : TimeframeEnum.values()) {
-            Timeframe timeframe = DateUtility.getStartOfTimeFrame(timeframeEnum, now);
+            Timeframe timeframe = DateUtility.getStartOfTimeFrame(timeframeEnum, now, firstSimOrderDate);
             LocalDateTime currentStartLocalDate = timeframe.getCurrentStartDate();
             LocalDateTime prevStartLocalDate = timeframe.getPrevStartDate();
             LocalDateTime prevLocalLastSecond = timeframe.getPrevLastSecond();
@@ -226,8 +261,9 @@ public class OrderService {
     public List<TimeframedAmount> getTimeframedTotalOrdersByDemography() {
         List<TimeframedAmount> timeframedAmounts = new ArrayList<>();
         LocalDateTime now = LocalDateTime.now();
+        LocalDateTime firstSimOrderDate = getFirstSimulationOrder(now);
         for (TimeframeEnum timeframeEnum : TimeframeEnum.values()) {
-            Timeframe startFrame = DateUtility.getStartOfTimeFrame(timeframeEnum, now);
+            Timeframe startFrame = DateUtility.getStartOfTimeFrame(timeframeEnum, now, firstSimOrderDate);
             LocalDateTime local = startFrame.getCurrentStartDate();
             Date startDate = DateUtility.convertToDate(local);
             Date endDate = DateUtility.convertToDate(now);
@@ -443,14 +479,15 @@ public class OrderService {
      * @param updatedOrder the new order details
      * @return the updated order
      */
-    public Order updateOrder(Long orderId, Order updatedOrder) {
-        return orderRepo.findById(orderId).map(order -> {
-            // order.setCustomerName(updatedOrder.getCustomerName());
-            order.setTotalAmount(updatedOrder.getTotalAmount());
-            order.setPayments(updatedOrder.getPayments());
-            return orderRepo.save(order);
-        }).orElseThrow(() -> new RuntimeException("Order not found with id: " + orderId));
-    }
+    // public Order updateOrder(Long orderId, Order updatedOrder) {
+    // return orderRepo.findById(orderId).map(order -> {
+    // // order.setCustomerName(updatedOrder.getCustomerName());
+    // order.setTotalAmount(updatedOrder.getTotalAmount());
+    // order.setPayments(updatedOrder.getPayments());
+    // return orderRepo.save(order);
+    // }).orElseThrow(() -> new RuntimeException("Order not found with id: " +
+    // orderId));
+    // }
 
     /**
      * Delete an order by its ID.
@@ -468,16 +505,17 @@ public class OrderService {
      * @param payment the payment to add
      * @return the updated order
      */
-    public Order addPaymentToOrder(Long orderId, Payment payment) {
-        Order order = orderRepo.findById(orderId)
-                .orElseThrow(() -> new RuntimeException("Order not found with id: " + orderId));
+    // public Order addPaymentToOrder(Long orderId, Payment payment) {
+    // Order order = orderRepo.findById(orderId)
+    // .orElseThrow(() -> new RuntimeException("Order not found with id: " +
+    // orderId));
 
-        payment.setOrder(order); // Associate payment with the order
-        paymentRepo.save(payment); // Save the payment
+    // payment.setOrder(order); // Associate payment with the order
+    // paymentRepo.save(payment); // Save the payment
 
-        order.getPayments().add(payment); // Add payment to order's payment list
-        return orderRepo.save(order);
-    }
+    // order.getPayments().add(payment); // Add payment to order's payment list
+    // return orderRepo.save(order);
+    // }
 
     /**
      * Get payments for a specific order.
@@ -485,10 +523,11 @@ public class OrderService {
      * @param orderId the ID of the order
      * @return a list of payments associated with the order
      */
-    public List<Payment> getPaymentsForOrder(Long orderId) {
-        Order order = orderRepo.findById(orderId)
-                .orElseThrow(() -> new RuntimeException("Order not found with id: " + orderId));
+    // public List<Payment> getPaymentsForOrder(Long orderId) {
+    // Order order = orderRepo.findById(orderId)
+    // .orElseThrow(() -> new RuntimeException("Order not found with id: " +
+    // orderId));
 
-        return order.getPayments();
-    }
+    // return order.getPayments();
+    // }
 }

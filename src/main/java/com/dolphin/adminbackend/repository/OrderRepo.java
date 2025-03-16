@@ -1,6 +1,7 @@
 package com.dolphin.adminbackend.repository;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -15,6 +16,9 @@ import com.dolphin.adminbackend.model.jpa.Category;
 import com.dolphin.adminbackend.model.jpa.Order;
 
 public interface OrderRepo extends JpaRepository<Order, Long> {
+
+        @Query("SELECT MIN(o.orderDate) FROM Order o WHERE o.simID = :simID")
+        LocalDateTime findEarliestOrderDate(@Param("simID") String simID);
 
         @Query("SELECT count(o.id) from Order o where o.orderDate BETWEEN :startDate AND :endDate")
         Long findCountOfOrdersBetween(@Param("startDate") Date startDate, @Param("endDate") Date endDate);
@@ -68,6 +72,12 @@ public interface OrderRepo extends JpaRepository<Order, Long> {
                         @Param("startDate") Date startDate,
                         @Param("endDate") Date endDate);
 
+        @Query(value = "SELECT * FROM order_ o " +
+                        "WHERE DATE(o.order_date) = DATE(:orderDate) " +
+                        "AND TIME_FORMAT(o.order_date, '%H:%i') = TIME_FORMAT(:orderDate, '%H:%i') " +
+                        "ORDER BY o.order_date DESC " +
+                        "LIMIT 1", nativeQuery = true)
+        Order findOrderByDate(@Param("orderDate") Date orderDate);
 
         /*
          * When you apply the FUNCTION('DATE', o.orderDate) (or similar date

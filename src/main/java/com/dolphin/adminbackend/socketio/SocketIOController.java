@@ -1,5 +1,6 @@
 package com.dolphin.adminbackend.socketio;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
@@ -8,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cglib.core.Local;
 import org.springframework.context.ApplicationEvent;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
@@ -23,6 +25,8 @@ import com.dolphin.adminbackend.event.*;
 
 import com.dolphin.adminbackend.eventpublisher.DolphinEventPublisher;
 import com.dolphin.adminbackend.model.dto.pojo.DiverPromptDetail;
+import com.dolphin.adminbackend.model.dto.pojo.SimStatusDetail;
+import com.dolphin.adminbackend.model.dto.pojo.SimulationDetail;
 import com.dolphin.adminbackend.model.dto.pojo.SocketDetail;
 import com.dolphin.adminbackend.model.dto.request.OrderReq;
 import com.dolphin.adminbackend.model.dto.response.GeminiRes;
@@ -51,7 +55,9 @@ public class SocketIOController {
         this.socketServer.addEventListener("INIT_SINGLE_AMOUNTS", SocketDetail.class, initSingleAmount);
         this.socketServer.addEventListener("INIT_LINE_CHARTS", SocketDetail.class, initLineCharts);
         this.socketServer.addEventListener("INIT_PIE_CHARTS", SocketDetail.class, initPieCharts);
-        this.socketServer.addEventListener("SIMULATE_NEW_ORDER", OrderReq.class, simulateNewOrder);
+        this.socketServer.addEventListener("ASK_SIM_STATUS", SimStatusDetail.class, askSimStatus);
+        this.socketServer.addEventListener("ANSWER_SIM_STATUS", SimStatusDetail.class, answerSimStatus);
+        this.socketServer.addEventListener("SIMULATE_NEW_ORDER", SimulationDetail.class, simulateNewOrder);
         this.socketServer.addEventListener("DIVER_NEW_PROMPT", DiverPromptDetail.class, handleDiverPrompt);
     }
 
@@ -99,17 +105,44 @@ public class SocketIOController {
         }
     };
 
-    public DataListener<OrderReq> simulateNewOrder = new DataListener<>() {
+    public DataListener<SimStatusDetail> askSimStatus = new DataListener<>() {
         @Override
-        public void onData(SocketIOClient client, OrderReq orderReq, AckRequest ackRequest) {
+        public void onData(SocketIOClient client, SimStatusDetail statusDetail, AckRequest ackRequest) {
+            Map<String, String> response = new HashMap<>();
+            response.put("code", "200");
+            ackRequest.sendAckData(response);
+            Date now = new Date();
+            statusDetail.setSessionID(client.getSessionId());
+            statusDetail.setDate(now);
+            statusDetail.setStatus("Asking all active clients if one of them is running a simulation");
+            socketServer.getBroadcastOperations().sendEvent("BROADCAST_ASK_SIM_STATUS", statusDetail);
+        }
+    };
 
-            NewOrderEvent newOrder = new NewOrderEvent(this, orderReq);
+    public DataListener<SimStatusDetail> answerSimStatus = new DataListener<>() {
+        @Override
+        public void onData(SocketIOClient client, SimStatusDetail statusDetail, AckRequest ackRequest) {
+            Map<String, String> response = new HashMap<>();
+            response.put("code", "200");
+            ackRequest.sendAckData(response);
+            Date now = new Date();
+            statusDetail.setSessionID(client.getSessionId());
+            statusDetail.setDate(now);
+            statusDetail.setStatus("I am running one!");
+            socketServer.getBroadcastOperations().sendEvent("BROADCAST_ANSWER_SIM_STATUS", statusDetail);
+        }
+    };
+
+    public DataListener<SimulationDetail> simulateNewOrder = new DataListener<>() {
+        @Override
+        public void onData(SocketIOClient client, SimulationDetail simDetail, AckRequest ackRequest) {
+            //log.info("id: " + client.getSessionId());
+            NewOrderEvent newOrder = new NewOrderEvent(this, simDetail.getSimulationDataList(), client.getSessionId());
             eventPublisher.publishOne(newOrder);
-            log.info("+1 new order: ");
             Map<String, String> response = new HashMap<>();
             response.put("status", "200");
             response.put("message", "new order created");
-            ackRequest.sendAckData(response);
+            ackRequest.sendAckData(response); 
         }
     };
 
@@ -118,10 +151,11 @@ public class SocketIOController {
         public void onData(SocketIOClient client, DiverPromptDetail prompt, AckRequest ackRequest) {
             int maxRetries = 5;
             int attempt = 0;
+            LocalDateTime now = LocalDateTime.now();
             while (attempt < maxRetries) {
                 try {
                     String userPrompt = prompt.getText();
-                    String systemPrompt = Prompt.DIVER_INSTRUCT_PROMPT.format(userPrompt);
+                    String systemPrompt = Prompt.DIVER_INSTRUCT_PROMPT.format(userPrompt, now);
                     ResponseEntity<GeminiRes> respEntity = genSQLService.askGeminiAPI(systemPrompt);
                     GeminiRes res = null;
                     String geminiQuery = null;
@@ -137,7 +171,7 @@ public class SocketIOController {
                         String resultStr = objectMapper.writeValueAsString(result);
                         log.info("resultStr: " + resultStr);
                         log.info("userPrompt: " + userPrompt);
-                        systemPrompt = Prompt.DIVER_REPLIER_PROMPT.format(resultStr, userPrompt);
+                        systemPrompt = Prompt.DIVER_REPLIER_PROMPT.format(resultStr, userPrompt, now);
 
                     } else {
                         client.sendEvent("DIVER_RESPONSE",
@@ -155,6 +189,7 @@ public class SocketIOController {
                         fullResponse.put("response", natLangResponse);
                         fullResponse.put("query", genSQLService.cleanSQL(geminiQuery));
                         client.sendEvent("DIVER_RESPONSE", fullResponse);
+                        // log.info("id: " + client.getSessionId());
                         return;
                     } else {
                         client.sendEvent("DIVER_RESPONSE",

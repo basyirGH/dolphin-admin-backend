@@ -14,12 +14,18 @@ import com.dolphin.adminbackend.model.dto.pojo.Timeframe;
 
 public class DateUtility {
 
-    public static Timeframe getStartOfTimeFrame(TimeframeEnum timeframeEnum, LocalDateTime now) {
+    public static Timeframe getStartOfTimeFrame(TimeframeEnum timeframeEnum, LocalDateTime now, LocalDateTime firstSimulationOrderDate) {
         LocalDateTime currentStartDate = null, prevStartDate = null, prevLastSecond = null;
         String message = "";
         DateTimeFormatter formatter;
 
         switch (timeframeEnum) {
+            case SIMULATION:
+                currentStartDate = firstSimulationOrderDate;
+                prevStartDate = null;
+                prevLastSecond = null;
+                message = message.concat("the beginning of the simulation. No previous amounts are available for comparison.");
+                break;
             case HOURLY:
                 currentStartDate = now.truncatedTo(ChronoUnit.HOURS);
                 formatter = DateTimeFormatter.ofPattern("h:mm a");

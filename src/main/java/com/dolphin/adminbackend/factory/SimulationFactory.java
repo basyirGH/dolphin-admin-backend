@@ -3,6 +3,7 @@ package com.dolphin.adminbackend.factory;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import org.springframework.stereotype.Component;
 
@@ -25,9 +26,9 @@ public class SimulationFactory {
     }
 
     // Methods
-    public Simulation getSimulation(String eventStr, SimulatableReq req) {
+    public Simulation getSimulation(String eventStr, List<SimulatableReq> req, UUID simID) {
         try {
-            Simulation sim = this.eventToCreatorMap.get(eventStr).getSimulation(req);
+            Simulation sim = this.eventToCreatorMap.get(eventStr).getSimulation(req, simID);
             return sim;
         } catch (Exception e) {
             e.printStackTrace();

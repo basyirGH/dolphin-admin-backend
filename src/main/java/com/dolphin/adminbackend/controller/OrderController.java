@@ -40,23 +40,23 @@ public class OrderController {
      * Solution: Jackson provides @JsonManagedReference and @JsonBackReference
      * annotations to handle circular references.
      */
-    @PostMapping("")
-    public ResponseEntity<?> createOrder(@RequestBody OrderReq orderReq) {
-        try {
-            Order createdOrder = orderService.createOrder(orderReq);
-            return ResponseEntity
-                    .status(HttpStatus.CREATED) // HTTP 201
-                    .body(createdOrder); // Include the created order in the response body
-        } catch (EntityNotFoundException e) {
-            return ResponseEntity
-                    .status(HttpStatus.NOT_FOUND)
-                    .body(e.getMessage());
-        } catch (Exception e) {
-            return ResponseEntity
-                    .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(e.getMessage());
-        }
+    // @PostMapping("")
+    // public ResponseEntity<?> createOrder(@RequestBody OrderReq orderReq) {
+    //     try {
+    //         Order createdOrder = orderService.createOrder(orderReq);
+    //         return ResponseEntity
+    //                 .status(HttpStatus.CREATED) // HTTP 201
+    //                 .body(createdOrder); // Include the created order in the response body
+    //     } catch (EntityNotFoundException e) {
+    //         return ResponseEntity
+    //                 .status(HttpStatus.NOT_FOUND)
+    //                 .body(e.getMessage());
+    //     } catch (Exception e) {
+    //         return ResponseEntity
+    //                 .status(HttpStatus.INTERNAL_SERVER_ERROR)
+    //                 .body(e.getMessage());
+    //     }
 
-    }
+    // }
 
 }

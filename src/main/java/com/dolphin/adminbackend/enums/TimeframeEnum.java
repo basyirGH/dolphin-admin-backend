@@ -1,6 +1,7 @@
 package com.dolphin.adminbackend.enums;
 
 public enum TimeframeEnum {
+    SIMULATION,
     HOURLY,
     DAILY,
     WEEKLY,

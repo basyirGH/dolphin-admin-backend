@@ -1,6 +1,8 @@
 package com.dolphin.adminbackend.event;
 
 import java.util.Date;
+import java.util.List;
+import java.util.UUID;
 import java.util.function.Supplier;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,10 +20,12 @@ import com.dolphin.adminbackend.service.OrderService;
 
 import lombok.Getter;
 import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
 
 @Setter
 @Getter
 @Component
+@Slf4j
 public class NewOrderEvent extends ApplicationEvent implements SimulationCreator {
 
     // Beans
@@ -31,7 +35,8 @@ public class NewOrderEvent extends ApplicationEvent implements SimulationCreator
     // Member fields
     private final String TYPE = "SIMULATION";
     private final String EVENT = "NEW_ORDER";
-    private OrderReq orderReq;
+    private List<OrderReq> orderReq;
+    private UUID simID;
 
     // Constructors
     // ApplicationEvent requires a non-arg constructor
@@ -39,23 +44,24 @@ public class NewOrderEvent extends ApplicationEvent implements SimulationCreator
         super(new Object());
     }
 
-    public NewOrderEvent(Object source, OrderReq orderReq) {
+    public NewOrderEvent(Object source, List<OrderReq> orderReq, UUID simID) {
         super(source);
         this.orderReq = orderReq;
+        this.simID = simID;
     }
 
     /*
      * Method overriding rules in Java require that an overriding method must have
      * the same method signature as the method in the parent interface.
-     * Since OrderReq is a subclass (or implementing class) of SimulatableReq, your
+     * Since OrderReq is a subclass (or implementing class) of SimulatableReq, the
      * overridden method is not truly overriding the original method because its
      * parameter type is more restrictive.
      */
     @Override
-    public Simulation getSimulation(SimulatableReq orderReq) {
-        Supplier<Order> aggregator = () -> orderService.createOrder((OrderReq) orderReq);
+    public Simulation getSimulation(List<SimulatableReq> orders, UUID simID) {
+        // log.info("id: " + simID);
+        Supplier<Order> aggregator = () -> orderService.createOrders(orders, simID);
         return aggregator.get();
-
     }
 
     @Override
@@ -64,8 +70,13 @@ public class NewOrderEvent extends ApplicationEvent implements SimulationCreator
     }
 
     @Override
-    public OrderReq getSimulatableRequest() {
+    public List getSimulatableRequest() {
         return this.orderReq;
+    }
+
+    @Override
+    public UUID getSimID(){
+        return this.simID;
     }
 
 }

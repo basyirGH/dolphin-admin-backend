@@ -1,6 +1,8 @@
 package com.dolphin.adminbackend.eventlistener;
 
 import java.util.Date;
+import java.util.List;
+import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEvent;
@@ -54,8 +56,9 @@ public class DolphinEventListener {
     @EventListener
     public <T extends ApplicationEvent & SimulationCreator> void handleSimulatedOrderEvent(T event) {
         String eventStr = event.getEventStr();
-        SimulatableReq req = event.getSimulatableRequest();
-        Simulation sim = simFactory.getSimulation(eventStr, req);
+        UUID simID = event.getSimID();
+        List<SimulatableReq> req = event.getSimulatableRequest();
+        Simulation sim = simFactory.getSimulation(eventStr, req, simID);
         webSocketController.broadcastSimulatedOrderSocketEvent(event.getEventStr(), sim);
     }
 }

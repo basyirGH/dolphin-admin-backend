@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.sql.Time;
 import java.util.Date;
 import java.util.List;
+import java.util.UUID;
 import java.util.function.Supplier;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -45,6 +46,7 @@ public class TotalRevenueMetricEvent extends ApplicationEvent implements MetricC
     private final MetricTypeEnum type = MetricTypeEnum.SINGLE_AMOUNT;
     private final MetricEventEnum event = MetricEventEnum.TOTAL_REVENUE;
     private Date timeOccurred;
+    private UUID sessionID;
 
     // Methods
     @Override
@@ -74,5 +76,9 @@ public class TotalRevenueMetricEvent extends ApplicationEvent implements MetricC
     @Override
     public Date getTimeOccured(){
         return timeOccurred;
+    }
+
+    public UUID getSessionID() {
+        return this.sessionID;
     }
 }
