@@ -1,14 +1,8 @@
 package com.dolphin.adminbackend.model.jpa;
 
-import jakarta.persistence.*;
-
-@Entity
-@Inheritance(strategy = InheritanceType.JOINED)
-@Table(name = "user_")
 public class User {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+   
     private long id;
 
     private String email;
