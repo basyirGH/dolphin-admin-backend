@@ -17,9 +17,6 @@ import com.dolphin.adminbackend.model.jpa.Order;
 
 public interface OrderRepo extends JpaRepository<Order, Long> {
 
-        @Query("SELECT MIN(o.orderDate) FROM Order o WHERE o.simID = :simID")
-        LocalDateTime findEarliestOrderDate(@Param("simID") String simID);
-
         @Query("SELECT count(o.id) from Order o where o.orderDate BETWEEN :startDate AND :endDate")
         Long findCountOfOrdersBetween(@Param("startDate") Date startDate, @Param("endDate") Date endDate);
 
@@ -72,12 +69,20 @@ public interface OrderRepo extends JpaRepository<Order, Long> {
                         @Param("startDate") Date startDate,
                         @Param("endDate") Date endDate);
 
+        @Query("SELECT MIN(o.orderDate) FROM Order o WHERE o.simID = :simID")
+        LocalDateTime findEarliestOrderDateBySimID(@Param("simID") String simID);
+
         @Query(value = "SELECT * FROM order_ o " +
                         "WHERE DATE(o.order_date) = DATE(:orderDate) " +
                         "AND TIME_FORMAT(o.order_date, '%H:%i') = TIME_FORMAT(:orderDate, '%H:%i') " +
                         "ORDER BY o.order_date DESC " +
                         "LIMIT 1", nativeQuery = true)
         Order findOrderByDate(@Param("orderDate") Date orderDate);
+
+        @Query(value = "SELECT * FROM order_ o " +
+                        "ORDER BY o.order_date DESC " +
+                        "LIMIT 1", nativeQuery = true)
+        Order findLatestOrder();
 
         /*
          * When you apply the FUNCTION('DATE', o.orderDate) (or similar date

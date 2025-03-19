@@ -1,6 +1,10 @@
 package com.dolphin.adminbackend.socketio;
 
+import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
@@ -30,9 +34,11 @@ import com.dolphin.adminbackend.model.dto.pojo.SimulationDetail;
 import com.dolphin.adminbackend.model.dto.pojo.SocketDetail;
 import com.dolphin.adminbackend.model.dto.request.OrderReq;
 import com.dolphin.adminbackend.model.dto.response.GeminiRes;
+import com.dolphin.adminbackend.model.jpa.Visitor;
 import com.dolphin.adminbackend.model.statisticaldashboard.Metric;
 import com.dolphin.adminbackend.prototype.Simulation;
 import com.dolphin.adminbackend.service.GenerativeSQLService;
+import com.dolphin.adminbackend.service.VisitorService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import lombok.extern.slf4j.Slf4j;
@@ -49,6 +55,9 @@ public class SocketIOController {
 
     @Autowired
     private GenerativeSQLService genSQLService;
+
+    @Autowired
+    private VisitorService visitorService;
 
     public SocketIOController(SocketIOServer socketServer) {
         this.socketServer = socketServer;
@@ -108,9 +117,16 @@ public class SocketIOController {
     public DataListener<SimStatusDetail> askSimStatus = new DataListener<>() {
         @Override
         public void onData(SocketIOClient client, SimStatusDetail statusDetail, AckRequest ackRequest) {
-            Map<String, String> response = new HashMap<>();
+            String ip = getClientIp(client);
+            Visitor visitor = visitorService.trackVisitor(ip);
+            ZonedDateTime zonedDateTime = visitor.getCooldownEndsAt().atZone(ZoneId.systemDefault());
+            Date cooldownEndsAt = Date.from(zonedDateTime.toInstant());
+            Map<String, Object> response = new HashMap<>();
             response.put("code", "200");
+            response.put("cooldownActive", visitor.getIsCooldownActive());
+            response.put("cooldownEndsAt", cooldownEndsAt);
             ackRequest.sendAckData(response);
+
             Date now = new Date();
             statusDetail.setSessionID(client.getSessionId());
             statusDetail.setDate(now);
@@ -136,13 +152,13 @@ public class SocketIOController {
     public DataListener<SimulationDetail> simulateNewOrder = new DataListener<>() {
         @Override
         public void onData(SocketIOClient client, SimulationDetail simDetail, AckRequest ackRequest) {
-            //log.info("id: " + client.getSessionId());
+            // log.info("id: " + client.getSessionId());
             NewOrderEvent newOrder = new NewOrderEvent(this, simDetail.getSimulationDataList(), client.getSessionId());
             eventPublisher.publishOne(newOrder);
             Map<String, String> response = new HashMap<>();
             response.put("status", "200");
             response.put("message", "new order created");
-            ackRequest.sendAckData(response); 
+            ackRequest.sendAckData(response);
         }
     };
 
@@ -201,7 +217,8 @@ public class SocketIOController {
                     if (attempt >= maxRetries) {
                         client.sendEvent("DIVER_RESPONSE", "Gemini could not correctly produce query for this prompt.");
                     } else {
-                        client.sendEvent("DIVER_RESPONSE", "Gemini built BadSqlGrammarException query, retrying... " + attempt + "/" + maxRetries);
+                        client.sendEvent("DIVER_RESPONSE",
+                                "Gemini built BadSqlGrammarException query, retrying... " + attempt + "/" + maxRetries);
                     }
                 } catch (Exception e) {
                     log.error("Exception:", e);
@@ -217,6 +234,22 @@ public class SocketIOController {
 
     public void broadcastSimulatedOrderSocketEvent(String eventStr, Simulation sim) {
         socketServer.getBroadcastOperations().sendEvent(eventStr, sim);
+    }
+
+    public static String getClientIp(SocketIOClient client) {
+        String ip = client.getHandshakeData().getHttpHeaders().get("X-Forwarded-For");
+
+        if (ip == null || ip.isEmpty()) {
+            SocketAddress remoteAddress = client.getRemoteAddress();
+            if (remoteAddress instanceof InetSocketAddress) {
+                InetSocketAddress inetAddress = (InetSocketAddress) remoteAddress;
+                ip = inetAddress.getHostString();
+            } else {
+                System.out.println("Not an instance of InetSocketAddress");
+            }
+        }
+
+        return ip;
     }
 
 }

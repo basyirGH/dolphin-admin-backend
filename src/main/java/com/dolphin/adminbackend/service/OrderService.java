@@ -192,11 +192,11 @@ public class OrderService {
 
     }
 
-    public LocalDateTime getFirstSimulationOrder(LocalDateTime orderDate) {
-        Order order = orderRepo.findOrderByDate(DateUtility.convertToDate(orderDate));
+    public LocalDateTime getLatestOrderDate(LocalDateTime orderDate) {
+        Order order = orderRepo.findLatestOrder();
         if (order != null) {
             UUID simID = order.getSimID();
-            LocalDateTime firstSimOrderDate = orderRepo.findEarliestOrderDate(simID.toString());
+            LocalDateTime firstSimOrderDate = orderRepo.findEarliestOrderDateBySimID(simID.toString());
             return firstSimOrderDate;
         }
         return orderDate;
@@ -205,7 +205,7 @@ public class OrderService {
     public List<TimeframedAmount> getTimeframedSingleAmounts(MetricEventEnum event) {
         List<TimeframedAmount> timeframedAmounts = new ArrayList<>();
         LocalDateTime now = LocalDateTime.now();
-        LocalDateTime firstSimOrderDate = getFirstSimulationOrder(now);
+        LocalDateTime firstSimOrderDate = getLatestOrderDate(now);
         for (TimeframeEnum timeframeEnum : TimeframeEnum.values()) {
             Timeframe timeframe = DateUtility.getStartOfTimeFrame(timeframeEnum, now, firstSimOrderDate);
             LocalDateTime currentStartLocalDate = timeframe.getCurrentStartDate();
@@ -261,7 +261,7 @@ public class OrderService {
     public List<TimeframedAmount> getTimeframedTotalOrdersByDemography() {
         List<TimeframedAmount> timeframedAmounts = new ArrayList<>();
         LocalDateTime now = LocalDateTime.now();
-        LocalDateTime firstSimOrderDate = getFirstSimulationOrder(now);
+        LocalDateTime firstSimOrderDate = getLatestOrderDate(now);
         for (TimeframeEnum timeframeEnum : TimeframeEnum.values()) {
             Timeframe startFrame = DateUtility.getStartOfTimeFrame(timeframeEnum, now, firstSimOrderDate);
             LocalDateTime local = startFrame.getCurrentStartDate();
