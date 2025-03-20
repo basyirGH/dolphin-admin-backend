@@ -6,18 +6,14 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.cglib.core.Local;
 import org.springframework.context.ApplicationEvent;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 
@@ -26,14 +22,18 @@ import com.corundumstudio.socketio.SocketIOClient;
 import com.corundumstudio.socketio.SocketIOServer;
 import com.corundumstudio.socketio.listener.DataListener;
 import com.dolphin.adminbackend.enums.Prompt;
-import com.dolphin.adminbackend.event.*;
-
+import com.dolphin.adminbackend.event.AvgQuantityPerOrderEvent;
+import com.dolphin.adminbackend.event.AvgRevenueMetricEvent;
+import com.dolphin.adminbackend.event.NewOrderEvent;
+import com.dolphin.adminbackend.event.RealTimeTrendsEvent;
+import com.dolphin.adminbackend.event.TotalOrdersByDemographyEvent;
+import com.dolphin.adminbackend.event.TotalOrdersMetricEvent;
+import com.dolphin.adminbackend.event.TotalRevenueMetricEvent;
 import com.dolphin.adminbackend.eventpublisher.DolphinEventPublisher;
 import com.dolphin.adminbackend.model.dto.pojo.DiverPromptDetail;
 import com.dolphin.adminbackend.model.dto.pojo.SimStatusDetail;
 import com.dolphin.adminbackend.model.dto.pojo.SimulationDetail;
 import com.dolphin.adminbackend.model.dto.pojo.SocketDetail;
-import com.dolphin.adminbackend.model.dto.request.OrderReq;
 import com.dolphin.adminbackend.model.dto.response.GeminiRes;
 import com.dolphin.adminbackend.model.jpa.Visitor;
 import com.dolphin.adminbackend.model.statisticaldashboard.Metric;
@@ -43,7 +43,6 @@ import com.dolphin.adminbackend.service.VisitorService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import lombok.extern.slf4j.Slf4j;
-import reactor.core.publisher.Mono;
 
 @Component
 @Slf4j
