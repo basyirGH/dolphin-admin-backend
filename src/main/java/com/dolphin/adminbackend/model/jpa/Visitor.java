@@ -23,5 +23,8 @@ public class Visitor{
 
     @Column
     private Boolean isCooldownActive;
+
+    @Column
+    private Integer simCount;
     
 }

@@ -11,6 +11,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cglib.core.Local;
@@ -118,18 +119,21 @@ public class SocketIOController {
         @Override
         public void onData(SocketIOClient client, SimStatusDetail statusDetail, AckRequest ackRequest) {
             String ip = getClientIp(client);
-            Visitor visitor = visitorService.trackVisitor(ip);
-            ZonedDateTime zonedDateTime = visitor.getCooldownEndsAt().atZone(ZoneId.systemDefault());
-            Date cooldownEndsAt = Date.from(zonedDateTime.toInstant());
+            ZonedDateTime zonedDateTime = null;
+            Date dateCooldownEndsAt = null;
+            Visitor visitor = visitorService.trackVisitor(ip, statusDetail.getDate());
+            LocalDateTime lcdCooldownEndsAt = visitor.getCooldownEndsAt();
+            if (lcdCooldownEndsAt != null) {
+                zonedDateTime = lcdCooldownEndsAt.atZone(ZoneId.systemDefault());
+                dateCooldownEndsAt = Date.from(zonedDateTime.toInstant());
+            }
             Map<String, Object> response = new HashMap<>();
             response.put("code", "200");
             response.put("cooldownActive", visitor.getIsCooldownActive());
-            response.put("cooldownEndsAt", cooldownEndsAt);
+            response.put("cooldownEndsAt", dateCooldownEndsAt);
             ackRequest.sendAckData(response);
 
-            Date now = new Date();
             statusDetail.setSessionID(client.getSessionId());
-            statusDetail.setDate(now);
             statusDetail.setStatus("Asking all active clients if one of them is running a simulation");
             socketServer.getBroadcastOperations().sendEvent("BROADCAST_ASK_SIM_STATUS", statusDetail);
         }
@@ -153,7 +157,7 @@ public class SocketIOController {
         @Override
         public void onData(SocketIOClient client, SimulationDetail simDetail, AckRequest ackRequest) {
             // log.info("id: " + client.getSessionId());
-            NewOrderEvent newOrder = new NewOrderEvent(this, simDetail.getSimulationDataList(), client.getSessionId());
+            NewOrderEvent newOrder = new NewOrderEvent(this, simDetail.getSimulationDataList(), simDetail.getSimId());
             eventPublisher.publishOne(newOrder);
             Map<String, String> response = new HashMap<>();
             response.put("status", "200");
